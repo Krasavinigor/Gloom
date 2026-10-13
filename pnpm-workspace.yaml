@@ -1,0 +1,14 @@
+saveExact: true
+strictPeerDependencies: true
+allowBuilds:
+  sharp: true
+  esbuild: true
+  '@tailwindcss/oxide': true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@vitest/coverage-v8@5.0.4'
+  - '@vitest/mocker@5.0.4'
+  - '@vitest/spy@5.0.4'
+  - vitest@5.0.4
+  - zod@4.6.7
+  - lucide-react@1.56.0
