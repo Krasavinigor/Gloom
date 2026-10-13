@@ -28,16 +28,16 @@ export function AppShell({
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8 lg:px-12">
           <Link
             href="/"
-            aria-label="По погоде — главная"
+            aria-label="Gloom — главная"
             className="flex items-center gap-3 text-xl font-semibold tracking-tight"
           >
             <span
               aria-hidden="true"
               className="grid size-10 place-items-center rounded-full bg-emerald-900 text-sm text-white"
             >
-              пп
+              Gm
             </span>
-            по погоде
+            Gloom
             <span className="hidden text-xs font-normal tracking-normal text-stone-500 lg:inline">
               ваш гардероб, ваш день
             </span>
@@ -77,7 +77,7 @@ export function AppShell({
         {children}
       </main>
       <footer className="mx-auto mt-8 flex max-w-7xl flex-wrap justify-between gap-3 border-t border-stone-200 px-5 py-6 text-xs text-stone-500 sm:px-8 lg:px-12">
-        <span>По погоде — меньше сомнений перед выходом</span>
+        <span>Gloom — меньше сомнений перед выходом</span>
         <span>
           {mode === 'demo'
             ? 'Иллюстрации созданы для проекта'

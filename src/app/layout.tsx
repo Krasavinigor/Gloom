@@ -3,8 +3,8 @@ import { QueryProvider } from '@/components/query-provider';
 import './globals.css';
 export const metadata: Metadata = {
   title: {
-    default: 'По погоде — ваш гардероб, ваш день',
-    template: '%s · По погоде',
+    default: 'Gloom — ваш гардероб, ваш день',
+    template: '%s · Gloom',
   },
   description:
     'Подбирайте одежду из своего гардероба под погоду. Локальный проект с демонстрационным режимом.',
