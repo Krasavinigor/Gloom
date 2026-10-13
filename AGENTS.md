@@ -1,4 +1,4 @@
-# ECC — Agent Instructions
+# Agent Instructions
 
 This is a **production-ready AI coding plugin** providing 71 specialized agents, 302 skills, 95 commands, and automated hook workflows for software development.
 
