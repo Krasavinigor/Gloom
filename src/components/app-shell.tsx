@@ -1,23 +1,23 @@
-import Link from "next/link";
-import type { ReactNode } from "react";
-import { Badge } from "@/components/ui/badge";
+import Link from 'next/link';
+import type { ReactNode } from 'react';
+import { Badge } from '@/components/ui/badge';
 export function AppShell({
   children,
   mode,
   active,
 }: {
   children: ReactNode;
-  mode: "demo" | "personal";
-  active: "outfits" | "wardrobe";
+  mode: 'demo' | 'personal';
+  active: 'outfits' | 'wardrobe';
 }) {
-  const base = mode === "demo" ? "/demo" : "";
+  const base = mode === 'demo' ? '/demo' : '';
   const links = [
     {
-      href: mode === "demo" ? "/demo" : "/outfits",
-      label: "Образы",
-      id: "outfits",
+      href: mode === 'demo' ? '/demo' : '/outfits',
+      label: 'Образы',
+      id: 'outfits',
     },
-    { href: `${base}/wardrobe`, label: "Гардероб", id: "wardrobe" },
+    { href: `${base}/wardrobe`, label: 'Гардероб', id: 'wardrobe' },
   ];
   return (
     <div className="min-h-screen">
@@ -50,35 +50,28 @@ export function AppShell({
               <Link
                 key={link.id}
                 href={link.href}
-                aria-current={active === link.id ? "page" : undefined}
-                className={`min-h-10 rounded-lg px-5 py-2 text-sm font-medium ${active === link.id ? "bg-white shadow-sm" : "text-stone-500 hover:text-stone-900"}`}
+                aria-current={active === link.id ? 'page' : undefined}
+                className={`min-h-10 rounded-lg px-5 py-2 text-sm font-medium ${active === link.id ? 'bg-white shadow-sm' : 'text-stone-500 hover:text-stone-900'}`}
               >
                 {link.label}
               </Link>
             ))}
           </nav>
           <Link
-            href={mode === "demo" ? "/wardrobe" : "/demo"}
+            href={mode === 'demo' ? '/wardrobe' : '/demo'}
             className="text-sm text-stone-600 underline-offset-4 hover:underline"
           >
-            {mode === "demo" ? "Мой гардероб ↗" : "Посмотреть демо ↗"}
+            {mode === 'demo' ? 'Мой гардероб ↗' : 'Посмотреть демо ↗'}
           </Link>
         </div>
       </header>
-      <main
-        id="main-content"
-        className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-12 lg:py-12"
-      >
+      <main id="main-content" className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
         <div className="mb-7 flex flex-wrap items-center gap-3">
-          <Badge
-            className={mode === "demo" ? "bg-emerald-50 text-emerald-800" : ""}
-          >
-            {mode === "demo" ? "Демонстрация" : "Личный гардероб"}
+          <Badge className={mode === 'demo' ? 'bg-emerald-50 text-emerald-800' : ''}>
+            {mode === 'demo' ? 'Демонстрация' : 'Личный гардероб'}
           </Badge>
           <span className="text-xs text-stone-500">
-            {mode === "demo"
-              ? "Готовые примеры · без расходов API"
-              : "Локально · без входа"}
+            {mode === 'demo' ? 'Готовые примеры · без расходов API' : 'Локально · без входа'}
           </span>
         </div>
         {children}
@@ -86,9 +79,9 @@ export function AppShell({
       <footer className="mx-auto mt-8 flex max-w-7xl flex-wrap justify-between gap-3 border-t border-stone-200 px-5 py-6 text-xs text-stone-500 sm:px-8 lg:px-12">
         <span>По погоде — меньше сомнений перед выходом</span>
         <span>
-          {mode === "demo"
-            ? "Иллюстрации созданы для проекта"
-            : "Личный гардероб хранится локально"}
+          {mode === 'demo'
+            ? 'Иллюстрации созданы для проекта'
+            : 'Личный гардероб хранится локально'}
         </span>
       </footer>
     </div>

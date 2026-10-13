@@ -14,7 +14,7 @@ export function DemoQuestions({ answer }: { answer: string }) {
         variant="outline"
         aria-expanded={open}
         aria-controls="demo-questions"
-        onClick={() => setOpen(value => !value)}
+        onClick={() => setOpen((value) => !value)}
       >
         Вопросы об образах <span aria-hidden="true">{open ? '−' : '+'}</span>
       </Button>
@@ -25,12 +25,21 @@ export function DemoQuestions({ answer }: { answer: string }) {
             Это готовый пример ответа. Ответы подготовлены для выбранного погодного сценария.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" onClick={() => setQuestion('why')}>Почему эти вещи?</Button>
-            <Button size="sm" variant="outline" onClick={() => setQuestion('period')}>На какой период образ?</Button>
+            <Button size="sm" variant="outline" onClick={() => setQuestion('why')}>
+              Почему эти вещи?
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => setQuestion('period')}>
+              На какой период образ?
+            </Button>
           </div>
           {question && (
-            <p role="status" className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm leading-6 text-emerald-950">
-              {question === 'why' ? answer : 'Пример рассчитан на обычную повседневную прогулку в течение трёх часов. Погода в демо фиксированная и не является текущим прогнозом.'}
+            <p
+              role="status"
+              className="mt-4 rounded-xl bg-emerald-50 p-4 text-sm leading-6 text-emerald-950"
+            >
+              {question === 'why'
+                ? answer
+                : 'Пример рассчитан на обычную повседневную прогулку в течение трёх часов. Погода в демо фиксированная и не является текущим прогнозом.'}
             </p>
           )}
         </Card>

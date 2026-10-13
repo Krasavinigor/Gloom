@@ -4,7 +4,7 @@
 
 ## Запуск
 
-Нужны Node.js 24 (в `.nvmrc` закреплён `24.21.0`), pnpm `11.25.0` и работающий Docker Desktop. Если pnpm ещё не доступен в обычном терминале, после `nvm use` выполни `corepack enable pnpm`; версия берётся из `packageManager`.
+Нужны Node.js 24 (в `.nvmrc` закреплён `24.21.0`), pnpm `12.11.2` и работающий Docker Desktop. После `nvm use` проверь `pnpm --version`. Если pnpm ещё не установлен, используй [официальную инструкцию установки](https://pnpm.io/installation/); точная версия проекта закреплена в `packageManager`.
 
 Из корня проекта:
 
@@ -38,6 +38,18 @@ pnpm dev
 
 ## Проверки
 
+### Форматирование UI
+
+```sh
+pnpm format
+pnpm format:check
+pnpm lint
+```
+
+`format` форматирует TSX-компоненты/страницы и CSS в `src`; `format:check` проверяет их без изменения файлов. Настройки — в `.prettierrc.json`: отступы два пробела, одинарные кавычки в JavaScript, ширина строки 100. `prettier-plugin-tailwindcss` сортирует классы в `className`, `cn`, `clsx` и `cva` с учётом темы Tailwind 4 из `src/app/globals.css`; параметры описаны в [документации плагина](https://github.com/tailwindlabs/prettier-plugin-tailwindcss). ESLint продолжает проверять код; `eslint-config-prettier` отключает конфликтующие правила оформления согласно [рекомендации Prettier](https://prettier.io/docs/integrating-with-linters). Секреты, артефакты сборки и workflow-файлы исключены через `.prettierignore`.
+
+### Тесты и сборка
+
 ```sh
 pnpm typecheck
 pnpm lint
@@ -69,6 +81,7 @@ Unit/component тесты не требуют БД. Для integration/coverage 
 
 ## Решения при создании каркаса
 
+- pnpm обновлён до **12.11.2** для обычного терминала на Intel Mac. Исходный 11.25.0 был проверен в среде Codex как JavaScript CLI; нативный pnpm из пользовательского терминала пытался переключиться на `@pnpm/exe@11.25.0` и падал с `ERR_PNPM_PNPM_ENGINE_NO_NATIVE_BINARY`. pnpm 12 имеет сборку macOS x64 согласно [списку поддерживаемых платформ](https://pnpm.io/installation/). Проверка версии остаётся включённой; `pmOnFail: ignore` не используется.
 - Для lint-плагинов Next.js потребовались TypeScript **6.0.3** и ESLint **9.39.5**: первоначальные TS 7 / ESLint 10 не соответствовали их peer ranges. Проверка peers сохранена строгой. Точные зависимости закреплены в `pnpm-lock.yaml`; исторические результаты этапа 0 не заменяют итоговую установку и сборку.
 - Next.js при запуске дописал свой блок в `AGENTS.md` с указанием локальной документации `node_modules/next/dist/docs`. Исходные правила ECC сохранены.
 - `.env.local` раньше отслеживался Git с содержимым без реальных credentials. Файл исключён из индекса с сохранением рабочей копии; проверка локальной истории не обнаружила реальных секретов. Ключ OpenAI остаётся в неотслеживаемом `.env`.

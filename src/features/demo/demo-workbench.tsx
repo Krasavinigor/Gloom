@@ -9,7 +9,7 @@ import { DemoQuestions } from './demo-questions';
 export function DemoWorkbench() {
   const [scenarioId, setScenarioId] = useState('warm');
   const [selected, setSelected] = useState(false);
-  const scenario = demoScenarios.find(value => value.id === scenarioId) ?? demoScenarios[0]!;
+  const scenario = demoScenarios.find((value) => value.id === scenarioId) ?? demoScenarios[0]!;
 
   return (
     <>
@@ -17,16 +17,23 @@ export function DemoWorkbench() {
 
       <DemoWeather scenario={scenario} />
 
-      <section aria-label="Выбор демонстрационной погоды" className="mt-6 flex flex-wrap items-center justify-between gap-5">
+      <section
+        aria-label="Выбор демонстрационной погоды"
+        className="mt-6 flex flex-wrap items-center justify-between gap-5"
+      >
         <div className="flex flex-wrap gap-2">
-          {demoScenarios.map(value => (
+          {demoScenarios.map((value) => (
             <Button
               key={value.id}
               variant={value.id === scenarioId ? 'default' : 'outline'}
               aria-pressed={value.id === scenarioId}
-              onClick={() => { setScenarioId(value.id); setSelected(false); }}
+              onClick={() => {
+                setScenarioId(value.id);
+                setSelected(false);
+              }}
             >
-              <span aria-hidden="true">{value.symbol}</span>{value.label}
+              <span aria-hidden="true">{value.symbol}</span>
+              {value.label}
             </Button>
           ))}
         </div>

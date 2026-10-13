@@ -27,7 +27,7 @@
 
 Принятые решения: Next.js App Router, React, TypeScript, SSR, Tailwind CSS, shadcn/ui, TanStack Query; PostgreSQL через Docker Compose, Knex; локальная папка фотографий; OpenAI; Open-Meteo Forecast и Geocoding. SSE выбран для уведомлений о статусах и отдельного потока чата.
 
-Основной пакетный менеджер — **pnpm**. Проверенный baseline `11.25.0` закрепляется в `packageManager`, зависимости — в `pnpm-lock.yaml`; установка и скрипты выполняются через pnpm. npm/yarn lockfiles для приложения не создаются.
+Основной пакетный менеджер — **pnpm**. Текущий baseline `12.11.2` закреплён в `packageManager`, зависимости — в `pnpm-lock.yaml`; установка и скрипты выполняются через pnpm.
 
 Дополнительные библиотеки и инструменты приняты; конкретные версии проверяются перед установкой:
 

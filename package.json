@@ -42,9 +42,12 @@
     "@types/pg": "8.23.1",
     "postcss": "8.5.29",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.4.0"
+    "eslint-config-next": "16.4.0",
+    "eslint-config-prettier": "10.1.8",
+    "prettier": "3.9.10",
+    "prettier-plugin-tailwindcss": "0.8.1"
   },
-  "packageManager": "pnpm@11.25.0",
+  "packageManager": "pnpm@12.11.2",
   "description": "Local weather wardrobe with an isolated portfolio demo",
   "engines": {
     "node": ">=24.15.0 <25"
@@ -62,6 +65,8 @@
     "db:up": "docker compose --env-file .env.local up -d --wait",
     "db:stop": "docker compose --env-file .env.local stop",
     "db:migrate": "tsx src/server/tools/migrate.ts",
-    "test:persistence": "tsx tests/integration/persistence-check.ts"
+    "test:persistence": "tsx tests/integration/persistence-check.ts",
+    "format": "prettier --write \"src/**/*.tsx\" \"src/**/*.css\"",
+    "format:check": "prettier --check \"src/**/*.tsx\" \"src/**/*.css\""
   }
 }
