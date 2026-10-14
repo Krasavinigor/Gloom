@@ -3,6 +3,7 @@ import type { NextConfig } from 'next';
 const config: NextConfig = {
   poweredByHeader: false,
   devIndicators: false,
+  serverExternalPackages: ['knex', 'pg'],
   turbopack: { root: process.cwd() },
   async headers() {
     return [{ source: '/(.*)', headers: [

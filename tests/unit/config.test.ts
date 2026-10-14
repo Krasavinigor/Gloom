@@ -10,6 +10,7 @@ describe('server environment', () => {
     expect(parseServerEnvironment({}, projectRoot)).toEqual({
       aiEnabled: false,
       databaseUrl: undefined,
+      databaseSchema: 'public',
       openaiApiKey: undefined,
       fileStorageRoot: resolve(projectRoot, '.data/photos'),
     });
@@ -65,5 +66,7 @@ describe('server environment', () => {
   it('rejects unsafe schema identifiers before they reach PostgreSQL', () => {
     expect(validateDatabaseSchema('wardrobe_test_123')).toBe('wardrobe_test_123');
     expect(() => validateDatabaseSchema('public; DROP SCHEMA public')).toThrow('Invalid database schema');
+    expect(() => parseServerEnvironment({ DATABASE_SCHEMA: 'public; DROP TABLE garments' }, projectRoot)).toThrow('DATABASE_SCHEMA');
+    expect(parseServerEnvironment({ DATABASE_SCHEMA: 'wardrobe_test_123' }, projectRoot).databaseSchema).toBe('wardrobe_test_123');
   });
 });

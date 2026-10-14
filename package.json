@@ -61,10 +61,11 @@
     "test": "vitest run tests/unit tests/components",
     "test:coverage": "tsx src/server/tools/test.ts --coverage",
     "test:integration": "tsx src/server/tools/test.ts --integration",
-    "test:e2e": "pnpm build && playwright test",
+    "test:e2e": "pnpm build && tsx src/server/tools/e2e.ts",
     "db:up": "docker compose --env-file .env.local up -d --wait",
     "db:stop": "docker compose --env-file .env.local stop",
     "db:migrate": "tsx src/server/tools/migrate.ts",
+    "storage:cleanup": "tsx src/server/tools/storage-cleanup.ts",
     "test:persistence": "tsx tests/integration/persistence-check.ts",
     "format": "prettier --write \"src/**/*.tsx\" \"src/**/*.css\"",
     "format:check": "prettier --check \"src/**/*.tsx\" \"src/**/*.css\""

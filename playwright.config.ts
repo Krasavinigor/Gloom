@@ -1,5 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
+if (!/^wardrobe_e2e_[a-f0-9]{32}$/.test(process.env.E2E_MANAGED_SCHEMA ?? '')
+  || process.env.DATABASE_SCHEMA !== process.env.E2E_MANAGED_SCHEMA) {
+  throw new Error('Use pnpm test:e2e to create isolated database and photo storage.');
+}
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -17,6 +22,6 @@ export default defineConfig({
     url: 'http://127.0.0.1:3100/demo',
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { ENABLE_AI: 'false', OPENAI_API_KEY: '', DATABASE_URL: '' },
+    env: { ENABLE_AI: 'false', OPENAI_API_KEY: '' },
   },
 });

@@ -1,8 +1,13 @@
 import type { Knex } from 'knex';
 import * as appSettings from '../../../db/migrations/202610130001_app_settings';
+import * as wardrobe from '../../../db/migrations/202610140001_wardrobe';
 import { validateDatabaseSchema } from './connection';
 
-const migration = { name: '202610130001_app_settings', implementation: appSettings } as const;
+const migrations = [
+  { name: '202610130001_app_settings', implementation: appSettings },
+  { name: '202610140001_wardrobe', implementation: wardrobe },
+] as const;
+type Migration = (typeof migrations)[number];
 
 export async function migrateDatabase(
   database: Knex,
@@ -13,9 +18,9 @@ export async function migrateDatabase(
     schemaName: validateDatabaseSchema(schema),
     tableName: 'knex_migrations',
     migrationSource: {
-      getMigrations: async () => [migration],
-      getMigrationName: (entry: typeof migration) => entry.name,
-      getMigration: async (entry: typeof migration) => entry.implementation,
+      getMigrations: async () => [...migrations],
+      getMigrationName: (entry: Migration) => entry.name,
+      getMigration: async (entry: Migration) => entry.implementation,
     },
   };
   if (direction === 'rollback') {

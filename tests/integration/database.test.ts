@@ -19,6 +19,10 @@ describe.skipIf(!integrationDatabaseUrl)('PostgreSQL migration and persistence',
       await administrator.schema.createSchema(schema);
       await migrateDatabase(database, schema);
       await migrateDatabase(database, schema);
+      const settings = await database.raw('SHOW statement_timeout');
+      expect(settings.rows[0].statement_timeout).toBe('15s');
+      const lockSettings = await database.raw('SHOW lock_timeout');
+      expect(lockSettings.rows[0].lock_timeout).toBe('5s');
       expect((await getLocalSettings(database))?.preferences).toEqual({});
       await expect(database('app_settings').insert({ id: 'another-user' })).rejects.toThrow();
       await expect(database('app_settings').where({ id: 'local' }).update({ preferences: '[]' })).rejects.toThrow();
