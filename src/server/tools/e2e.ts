@@ -7,6 +7,8 @@ import { loadEnvConfig } from '@next/env';
 import { resolveIntegrationDatabaseUrl } from '../config/test-database';
 import { createDatabase } from '../db/connection';
 import { migrateDatabase } from '../db/migrations';
+import { weatherCacheKey } from '../weather/forecast';
+import { makeForecast, testPlaces } from '../../../tests/fixtures/providers';
 
 async function main() {
   loadEnvConfig(process.cwd());
@@ -19,6 +21,12 @@ async function main() {
   try {
     await administrator.schema.createSchema(schema);
     await migrateDatabase(database, schema);
+    const now = Date.now();
+    const fetched = now - 16 * 60_000;
+    const place = testPlaces.tallinn;
+    await database('weather_cache').insert({ key: weatherCacheKey(place),
+      payload: JSON.stringify(makeForecast(fetched, place.latitude, place.longitude, place.timezone)),
+      fetched_at: new Date(fetched), expires_at: new Date(fetched + 15 * 60_000) });
     const code = await new Promise<number>((resolveCode, reject) => {
       const child = spawn(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test'], {
         stdio: 'inherit', env: { ...process.env, DATABASE_URL: url, DATABASE_SCHEMA: schema,

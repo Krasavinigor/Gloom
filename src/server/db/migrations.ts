@@ -1,11 +1,15 @@
 import type { Knex } from 'knex';
 import * as appSettings from '../../../db/migrations/202610130001_app_settings';
 import * as wardrobe from '../../../db/migrations/202610140001_wardrobe';
+import * as location from '../../../db/migrations/202610140002_location';
+import * as weatherCache from '../../../db/migrations/202610140003_weather_cache';
 import { validateDatabaseSchema } from './connection';
 
 const migrations = [
   { name: '202610130001_app_settings', implementation: appSettings },
   { name: '202610140001_wardrobe', implementation: wardrobe },
+  { name: '202610140002_location', implementation: location },
+  { name: '202610140003_weather_cache', implementation: weatherCache },
 ] as const;
 type Migration = (typeof migrations)[number];
 

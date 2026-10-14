@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test } from './fixtures';
 
 test('demo requires a manual selection and resets outfits for a new scenario', async ({ page }) => {
   const externalRequests: string[] = [];

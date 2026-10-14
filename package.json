@@ -66,6 +66,7 @@
     "db:stop": "docker compose --env-file .env.local stop",
     "db:migrate": "tsx src/server/tools/migrate.ts",
     "storage:cleanup": "tsx src/server/tools/storage-cleanup.ts",
+    "check:weather": "tsx src/server/tools/check-weather.ts",
     "test:persistence": "tsx tests/integration/persistence-check.ts",
     "format": "prettier --write \"src/**/*.tsx\" \"src/**/*.css\"",
     "format:check": "prettier --check \"src/**/*.tsx\" \"src/**/*.css\""
