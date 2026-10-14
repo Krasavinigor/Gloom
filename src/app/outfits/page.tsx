@@ -15,10 +15,17 @@ export default async function OutfitsPage() {
     const context = await (await getLocationWeatherService()).context();
     initialLocation = context.location;
     initialWeather = context.weather ?? undefined;
-  } catch (error) { initialError = (await errorResponse(error).json()).error.message; }
+  } catch (error) {
+    initialError = (await errorResponse(error).json()).error.message;
+  }
   return (
     <AppShell mode="personal" active="outfits">
-      <OutfitsWorkbench initialLocation={initialLocation} initialWeather={initialWeather} initialError={initialError} initialNow={Date.now()} />
+      <OutfitsWorkbench
+        initialLocation={initialLocation}
+        initialWeather={initialWeather}
+        initialError={initialError}
+        initialNow={Date.now()}
+      />
     </AppShell>
   );
 }
