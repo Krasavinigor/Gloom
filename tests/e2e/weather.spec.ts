@@ -75,10 +75,10 @@ test('IP and city-search failure leave manual recovery available', async ({ page
   await expect(page.getByText('Не удалось определить город. Выберите его вручную.')).toBeVisible();
   await page.getByLabel('Город', { exact: true }).fill('Ошибка');
   await page.getByRole('button', { name: 'Найти город', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('Не удалось найти места. Повторите поиск.');
+  await expect(page.getByRole('main').getByRole('alert')).toContainText('Не удалось найти места. Повторите поиск.');
   await selectCity(page, 'Москва');
   await expect(page.getByRole('region', { name: 'Погода для выбранного места' })).toContainText('12 °C');
-  await expect(page.getByRole('alert')).toHaveCount(0);
+  await expect(page.getByRole('main').getByRole('alert')).toHaveCount(0);
 });
 
 test('provider failure exposes cached stale weather and preserves its fetch time on refresh', async ({ page, request }, info) => {

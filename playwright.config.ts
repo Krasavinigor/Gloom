@@ -24,7 +24,7 @@ export default defineConfig({
     url: 'http://127.0.0.1:3100/demo',
     reuseExistingServer: false,
     timeout: 120_000,
-    env: { ENABLE_AI: 'false', OPENAI_API_KEY: '',
+    env: { ENABLE_AI: 'true', OPENAI_API_KEY: 'sk-isolated-browser-test-fixture',
       NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=${pathToFileURL(resolve('tests/fixtures/provider-preload.mjs')).href}`.trim(),
     },
   },

@@ -24,6 +24,8 @@ export default async function OutfitsPage() {
         initialLocation={initialLocation}
         initialWeather={initialWeather}
         initialError={initialError}
+        // This dynamic Server Component serializes one request-time clock value for stable hydration.
+        // eslint-disable-next-line react-hooks/purity
         initialNow={Date.now()}
       />
     </AppShell>

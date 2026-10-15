@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { isDeepStrictEqual } from 'node:util';
 import type { Knex } from 'knex';
 import { z } from 'zod';
+import { recognitionProposalSchema } from '../../features/recognition/schema';
 import {
   garmentFieldsSchema,
   WardrobeError,
@@ -39,6 +40,8 @@ interface DraftRow {
   expires_at: Date;
   garment_id: string | null;
   cancelled_at: Date | null;
+  recognition_operation_id: string | null;
+  ai_proposal: unknown;
 }
 
 const assetSchema = z
@@ -97,6 +100,8 @@ const asDraft = (row: DraftRow): Draft => {
     fields: row.fields === null ? null : garmentFieldsSchema.parse(row.fields),
     expiresAt: row.expires_at.toISOString(),
     garmentId: row.garment_id,
+    recognitionOperationId: row.recognition_operation_id,
+    aiProposal: row.ai_proposal === null ? null : recognitionProposalSchema.parse(row.ai_proposal),
   };
 };
 
@@ -161,6 +166,8 @@ export function createWardrobeRepository(database: Knex) {
         fields: null,
         expiresAt: draft.expires_at.toISOString(),
         garmentId: null,
+        recognitionOperationId: null,
+        aiProposal: null,
       };
     });
   }

@@ -14,6 +14,13 @@ const fixture = (start = now - 30 * 60_000, count = 8) => ({
 const normalize = (raw: unknown, time = now, status: 'fresh' | 'stale' = 'fresh') => normalizeForecast(raw, place, time, status, new Date(now).toISOString(), 4);
 
 describe('Open-Meteo forecast normalization', () => {
+  it('accepts the documented heavy-thunderstorm code in current and hourly data', () => {
+    const raw = fixture();
+    const result = normalize({ ...raw, current: { ...raw.current, weather_code: 97 },
+      hourly: { ...raw.hourly, weather_code: raw.hourly.weather_code.map(() => 97) } });
+    expect(result.current?.weatherCode).toBe(97);
+    expect(result.status).toBe('fresh');
+  });
   it('uses UTC three-hour window across repeated local DST hour, estimates instantaneous boundaries and conservatively includes rain intervals', () => {
     const result = normalize(fixture());
     expect(result.period).toEqual({ start: '2026-10-25T00:30:00.000Z', end: '2026-10-25T03:30:00.000Z', timezone: place.timezone });

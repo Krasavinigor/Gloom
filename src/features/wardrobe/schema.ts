@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { RecognitionProposal } from '../recognition/schema';
 
 export const bodyAreas = ['feet', 'legs', 'torso', 'head'] as const;
 export const seasons = ['winter', 'midseason', 'summer'] as const;
@@ -152,6 +153,8 @@ export type Draft = Readonly<{
   fields: GarmentFields | null;
   expiresAt: string;
   garmentId: string | null;
+  recognitionOperationId?: string | null;
+  aiProposal?: RecognitionProposal | null;
 }>;
 export type Garment = Readonly<{
   id: string;

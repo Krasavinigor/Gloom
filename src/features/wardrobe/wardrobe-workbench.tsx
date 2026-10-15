@@ -8,6 +8,7 @@ import { wardrobeClient, WardrobeApiError } from './client';
 import { GarmentForm } from './garment-form';
 import { Photo, PhotoUpload } from './photo-upload';
 import { WardrobeCard } from './wardrobe-card';
+import { RecognitionPanel } from '@/features/recognition/recognition-panel';
 
 const wardrobeKey = ['personal-wardrobe'] as const;
 function draftUrl(id: string | null) {
@@ -22,10 +23,12 @@ export function WardrobeWorkbench({
   initialData,
   initialError,
   initialDraftId,
+  aiEnabled = false,
 }: {
   initialData?: WardrobeSnapshot;
   initialError?: string;
   initialDraftId?: string;
+  aiEnabled?: boolean;
 }) {
   const client = useQueryClient();
   const [draftId, setDraftId] = useState<string | null>(initialDraftId ?? null);
@@ -33,6 +36,11 @@ export function WardrobeWorkbench({
   const [deleting, setDeleting] = useState<Garment | null>(null);
   const [editRevision, setEditRevision] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  const [appliedProposal, setAppliedProposal] = useState<{
+    draftId: string;
+    fields: GarmentFields;
+    revision: number;
+  } | null>(null);
   const query = useQuery({
     queryKey: wardrobeKey,
     queryFn: wardrobeClient.list,
@@ -260,9 +268,27 @@ export function WardrobeWorkbench({
                     <p className="my-4 text-xs leading-5 text-stone-500">
                       Черновик хранится 24 часа. До сохранения вещь не участвует в подборе.
                     </p>
+                    <RecognitionPanel
+                      key={`recognition:${draft.id}`}
+                      draft={draft}
+                      aiEnabled={aiEnabled}
+                      busy={busy}
+                      onComplete={() => draftQuery.refetch()}
+                      onApply={(fields) =>
+                        setAppliedProposal((previous) => ({
+                          draftId: draft.id,
+                          fields,
+                          revision: (previous?.revision ?? 0) + 1,
+                        }))
+                      }
+                    />
                     <GarmentForm
-                      key={draft.id}
-                      fields={draft.fields}
+                      key={`${draft.id}:${appliedProposal?.draftId === draft.id ? appliedProposal.revision : 0}`}
+                      fields={
+                        appliedProposal?.draftId === draft.id
+                          ? appliedProposal.fields
+                          : draft.fields
+                      }
                       busy={busy}
                       submitLabel="Сохранить вещь"
                       cancelLabel="Отменить добавление"
@@ -284,8 +310,9 @@ export function WardrobeWorkbench({
                 }}
               />
               <p className="mt-5 text-xs leading-5 text-stone-500">
-                Распознавание одежды появится на следующем этапе. Сейчас описание заполняется
-                вручную.
+                {aiEnabled
+                  ? 'После загрузки можно распознать вещь по кнопке или описать её вручную.'
+                  : 'AI сейчас отключён. После загрузки заполните описание вручную.'}
               </p>
             </>
           )}

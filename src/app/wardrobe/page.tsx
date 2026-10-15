@@ -4,6 +4,7 @@ import { WardrobeWorkbench } from '@/features/wardrobe/wardrobe-workbench';
 import type { WardrobeSnapshot } from '@/features/wardrobe/schema';
 import { getWardrobeService } from '@/server/wardrobe/runtime';
 import { errorResponse } from '@/server/http/errors';
+import { parseServerEnvironment } from '@/server/config/environment';
 export const metadata: Metadata = { title: 'Мой гардероб' };
 export const dynamic = 'force-dynamic';
 export default async function WardrobePage({
@@ -26,6 +27,7 @@ export default async function WardrobePage({
         initialData={initialData}
         initialError={initialError}
         initialDraftId={initialDraftId}
+        aiEnabled={parseServerEnvironment(process.env).aiEnabled}
       />
     </AppShell>
   );

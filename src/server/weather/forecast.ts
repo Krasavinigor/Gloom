@@ -8,7 +8,7 @@ const wind = z.number().min(0).max(500);
 const precipitation = z.number().min(0).max(500);
 const probability = z.number().min(0).max(100);
 const timestamp = z.number().int().positive();
-const weatherCode = z.number().int().refine((code) => [0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 99].includes(code));
+const weatherCode = z.number().int().refine((code) => [0, 1, 2, 3, 45, 48, 51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 71, 73, 75, 77, 80, 81, 82, 85, 86, 95, 96, 97, 99].includes(code));
 const array = (schema: z.ZodType<number>) => z.array(schema).min(4).max(192);
 const units = {
   time: z.literal('unixtime'), temperature_2m: z.literal('°C'), apparent_temperature: z.literal('°C'),
