@@ -1,4 +1,6 @@
 'use client';
+import { useI18n } from '@/i18n/provider';
+import { wardrobeMessages, garmentLabel, garmentCategory } from '@/i18n/messages/wardrobe';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { z } from 'zod';
@@ -21,20 +23,20 @@ const blankFields: GarmentFields = {
   windProtection: 'unknown',
 };
 const areaChoices = [
-  { value: 'feet', label: 'Ступни' },
-  { value: 'legs', label: 'Ноги' },
-  { value: 'torso', label: 'Корпус' },
-  { value: 'head', label: 'Голова' },
+  { value: 'feet', label: 'feet' },
+  { value: 'legs', label: 'legs' },
+  { value: 'torso', label: 'torso' },
+  { value: 'head', label: 'head' },
 ];
 const seasonChoices = [
-  { value: 'winter', label: 'Зима' },
-  { value: 'midseason', label: 'Весна / осень' },
-  { value: 'summer', label: 'Лето' },
+  { value: 'winter', label: 'winter' },
+  { value: 'midseason', label: 'midseason' },
+  { value: 'summer', label: 'summer' },
 ];
 const layerChoices = [
-  { value: 'base', label: 'Базовый' },
-  { value: 'middle', label: 'Средний' },
-  { value: 'outer', label: 'Верхний' },
+  { value: 'base', label: 'base' },
+  { value: 'middle', label: 'middle' },
+  { value: 'outer', label: 'outer' },
 ];
 
 export function GarmentForm({
@@ -52,6 +54,7 @@ export function GarmentForm({
   onSubmit: (fields: GarmentFields) => void;
   onCancel: () => void;
 }) {
+  const { t, locale } = useI18n(wardrobeMessages);
   const {
     register,
     handleSubmit,
@@ -62,6 +65,8 @@ export function GarmentForm({
     resolver: zodResolver(garmentFieldsSchema),
     defaultValues: fields ?? blankFields,
   });
+  const choices = (items: typeof areaChoices) =>
+    items.map((item) => ({ ...item, label: t(item.label as keyof typeof wardrobeMessages.en) }));
   const type = useWatch({ control, name: 'type' });
   const temperature = useWatch({ control, name: 'temperature' });
   const category = garmentTypeCatalog.find((item) => item.value === type)?.category;
@@ -70,7 +75,7 @@ export function GarmentForm({
     <form onSubmit={handleSubmit(onSubmit)} noValidate className="space-y-5">
       <fieldset disabled={busy} className="space-y-5">
         <label className="block text-sm font-medium">
-          Название вещи
+          {t('name')}
           <input
             {...register('name')}
             maxLength={120}
@@ -81,7 +86,7 @@ export function GarmentForm({
         </label>
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="block text-sm font-medium">
-            Тип вещи
+            {t('type')}
             <select
               {...register('type', {
                 onChange: (event) => {
@@ -96,58 +101,70 @@ export function GarmentForm({
             >
               {garmentTypeCatalog.map((item) => (
                 <option key={item.value} value={item.value}>
-                  {item.label}
+                  {garmentLabel(locale, item.value)}
                 </option>
               ))}
             </select>
           </label>
           <label className="block text-sm font-medium">
-            Категория
+            {t('category')}
             <input
-              value={category ?? ''}
+              value={garmentCategory(locale, type)}
               readOnly
               className={`${inputClass} bg-stone-50 text-stone-500`}
             />
           </label>
         </div>
-        <Choices title="Область тела" choices={areaChoices} register={register('bodyAreas')} />
-        <Choices title="Сезоны" choices={seasonChoices} register={register('seasons')} />
+        <Choices
+          title={t('bodyAreas')}
+          choices={choices(areaChoices)}
+          register={register('bodyAreas')}
+        />
+        <Choices
+          title={t('seasons')}
+          choices={choices(seasonChoices)}
+          register={register('seasons')}
+        />
         {withoutLayer ? (
-          <p className="text-sm text-stone-500">Слой для обуви и головного убора не применяется.</p>
+          <p className="text-sm text-stone-500">{t('noLayers')}</p>
         ) : (
-          <Choices title="Допустимые слои" choices={layerChoices} register={register('layers')} />
+          <Choices
+            title={t('layers')}
+            choices={choices(layerChoices)}
+            register={register('layers')}
+          />
         )}
         <div className="grid gap-5 sm:grid-cols-2">
           <label className="block text-sm font-medium">
-            Цвет
+            {t('color')}
             <input
               {...register('color')}
               maxLength={80}
               className={inputClass}
-              placeholder="Неизвестно"
+              placeholder={t('unknown')}
             />
           </label>
           <label className="block text-sm font-medium">
-            Рисунок
+            {t('pattern')}
             <input
               {...register('pattern')}
               maxLength={120}
               className={inputClass}
-              placeholder="Неизвестно"
+              placeholder={t('unknown')}
             />
           </label>
         </div>
         <label className="block text-sm font-medium">
-          Теплота
+          {t('warmth')}
           <select {...register('warmth')} className={inputClass}>
-            <option value="unknown">Неизвестно</option>
-            <option value="light">Лёгкая</option>
-            <option value="medium">Средняя</option>
-            <option value="warm">Тёплая</option>
+            <option value="unknown">{t('unknown')}</option>
+            <option value="light">{t('light')}</option>
+            <option value="medium">{t('medium')}</option>
+            <option value="warm">{t('warm')}</option>
           </select>
         </label>
         <fieldset className="space-y-3">
-          <legend className="text-sm font-medium">Ориентировочная температура</legend>
+          <legend className="text-sm font-medium">{t('temperature')}</legend>
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"
@@ -156,12 +173,12 @@ export function GarmentForm({
                 setValue('temperature', event.target.checked ? { min: 10, max: 25 } : null)
               }
             />
-            Указать диапазон
+            {t('setRange')}
           </label>
           {temperature !== null && (
             <div className="grid gap-5 sm:grid-cols-2">
               <label className="text-sm">
-                От, °C
+                {t('minimum')}
                 <input
                   type="number"
                   step="any"
@@ -172,7 +189,7 @@ export function GarmentForm({
                 />
               </label>
               <label className="text-sm">
-                До, °C
+                {t('maximum')}
                 <input
                   type="number"
                   step="any"
@@ -184,34 +201,30 @@ export function GarmentForm({
               </label>
             </div>
           )}
-          <p className="text-xs leading-5 text-stone-500">
-            Это приблизительная оценка, а не гарантия комфорта.
-          </p>
+          <p className="text-xs leading-5 text-stone-500">{t('estimate')}</p>
         </fieldset>
         <div className="grid gap-5 sm:grid-cols-2">
-          <ProtectionChoice label="Защита от дождя" registration={register('rainProtection')} />
-          <ProtectionChoice label="Защита от ветра" registration={register('windProtection')} />
+          <ProtectionChoice label={t('rain')} registration={register('rainProtection')} />
+          <ProtectionChoice label={t('wind')} registration={register('windProtection')} />
         </div>
-        <p className="text-xs leading-5 text-stone-500">
-          Подтверждайте защиту только по свойствам вещи. По фотографии её нельзя надёжно определить.
-        </p>
+        <p className="text-xs leading-5 text-stone-500">{t('protectionHelp')}</p>
       </fieldset>
       {Object.keys(errors).length > 0 && (
         <p role="alert" className="text-sm text-red-800">
           {errors.name
-            ? 'Укажите название вещи (до 120 символов).'
+            ? t('nameError')
             : errors.seasons
-              ? 'Выберите хотя бы один сезон.'
+              ? t('seasonsError')
               : errors.bodyAreas
-                ? 'Выберите хотя бы одну область тела.'
+                ? t('bodyError')
                 : errors.temperature
-                  ? 'Проверьте диапазон температуры: от −60 до 60 °C, нижняя граница не выше верхней.'
-                  : 'Проверьте значения полей.'}
+                  ? t('temperatureError')
+                  : t('fieldsError')}
         </p>
       )}
       <div className="flex flex-wrap gap-3">
         <Button type="submit" disabled={busy}>
-          {busy ? 'Сохраняем…' : submitLabel}
+          {busy ? t('saving') : submitLabel}
         </Button>
         <Button type="button" variant="outline" disabled={busy} onClick={onCancel}>
           {cancelLabel}
@@ -254,13 +267,14 @@ function Choices({
   );
 }
 function ProtectionChoice({ label, registration }: { label: string; registration: Registration }) {
+  const { t } = useI18n(wardrobeMessages);
   return (
     <label className="block text-sm font-medium">
       {label}
       <select {...registration} className={inputClass}>
-        <option value="unknown">Неизвестно</option>
-        <option value="confirmed">Подтверждена</option>
-        <option value="absent">Нет</option>
+        <option value="unknown">{t('unknown')}</option>
+        <option value="confirmed">{t('confirmed')}</option>
+        <option value="absent">{t('absent')}</option>
       </select>
     </label>
   );

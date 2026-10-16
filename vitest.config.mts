@@ -8,8 +8,8 @@ export default defineConfig({
     environment: 'node',
     coverage: {
       provider: 'v8',
-      include: ['src/features/**/*.{ts,tsx}', 'src/server/config/**/*.ts', 'src/server/db/**/*.ts', 'src/server/storage/**/*.ts', 'src/server/http/**/*.ts', 'src/server/wardrobe/**/*.ts', 'src/server/location/**/*.ts', 'src/server/weather/**/*.ts', 'src/server/operations/**/*.ts', 'src/server/recognition/**/*.ts', 'src/server/outfits/**/*.ts', 'src/worker/recognition-worker.ts', 'src/worker/outfit-worker.ts'],
-      exclude: ['**/*.test.*', 'src/server/http/runtime-handlers.ts', 'src/server/wardrobe/runtime.ts', 'src/server/http/location-runtime-handlers.ts', 'src/server/location/runtime.ts', 'src/server/http/recognition-runtime-handlers.ts', 'src/server/recognition/runtime.ts', 'src/server/http/outfit-runtime-handlers.ts', 'src/server/outfits/runtime.ts'],
+      include: ['src/i18n/**/*.{ts,tsx}', 'src/features/**/*.{ts,tsx}', 'src/server/config/**/*.ts', 'src/server/db/**/*.ts', 'src/server/storage/**/*.ts', 'src/server/http/**/*.ts', 'src/server/wardrobe/**/*.ts', 'src/server/location/**/*.ts', 'src/server/weather/**/*.ts', 'src/server/operations/**/*.ts', 'src/server/recognition/**/*.ts', 'src/server/outfits/**/*.ts', 'src/worker/recognition-worker.ts', 'src/worker/outfit-worker.ts'],
+      exclude: ['**/*.test.*', 'src/i18n/server.ts', 'src/server/http/runtime-handlers.ts', 'src/server/wardrobe/runtime.ts', 'src/server/http/location-runtime-handlers.ts', 'src/server/location/runtime.ts', 'src/server/http/recognition-runtime-handlers.ts', 'src/server/recognition/runtime.ts', 'src/server/http/outfit-runtime-handlers.ts', 'src/server/outfits/runtime.ts'],
       reporter: ['text', 'html', 'json-summary'],
       thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },
     },

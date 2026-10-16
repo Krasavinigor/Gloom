@@ -1,6 +1,10 @@
 'use client';
 import { useRef, useState } from 'react';
 import Link from 'next/link';
+import { useI18n } from '@/i18n/provider';
+import { getErrorMessage } from '@/i18n/errors';
+import { outfitMessages } from '@/i18n/messages/outfits';
+import { localeTag, type Locale } from '@/i18n/core';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -17,15 +21,6 @@ import { outfitClient, OutfitApiError } from './client';
 const resultKey = ['outfit-result'] as const;
 const budgetKey = ['ai-budget'] as const;
 const isActive = (value: OperationSnapshot) => ['queued', 'running'].includes(value.status);
-const roleLabels: Record<OutfitRole, string> = {
-  base_top: 'Основной верх',
-  bottom: 'Низ',
-  whole: 'Цельная одежда',
-  middle: 'Средний слой',
-  outer: 'Верхняя одежда',
-  footwear: 'Обувь',
-  headwear: 'Головной убор',
-};
 export function OutfitPanel({
   initialResult,
   aiEnabled = false,
@@ -37,6 +32,7 @@ export function OutfitPanel({
   now?: number;
   contextWeather?: WeatherSnapshot;
 }) {
+  const { locale, t } = useI18n(outfitMessages);
   const client = useQueryClient();
   const [operation, setOperation] = useState<OperationSnapshot | null>(null);
   const key = useRef<string | null>(null);
@@ -131,97 +127,96 @@ export function OutfitPanel({
         }
       : persisted;
   return (
-    <section aria-label="Подбор образов" className="mt-7">
+    <section aria-label={t('section')} className="mt-7">
       <WeatherBackground presetId={state?.result?.backgroundPresetId} stale={state?.stale ?? true}>
         <div className="space-y-5 p-5 sm:p-6">
-          <h2 className="text-xl font-semibold">Образы из вашего гардероба</h2>
-          <p className="text-sm leading-6 text-stone-600">
-            Проверьте город и погоду. По кнопке в OpenAI отправятся описания вещей и прогноз на
-            ближайшие три часа.
-          </p>
-          {!aiEnabled && (
-            <p className="text-sm text-stone-600">
-              AI сейчас отключён. Гардероб и готовые примеры доступны.
-            </p>
-          )}
+          <h2 className="text-xl font-semibold">{t('heading')}</h2>
+          <p className="text-sm leading-6 text-stone-600">{t('intro')}</p>
+          {!aiEnabled && <p className="text-sm text-stone-600">{t('disabled')}</p>}
           {budget.data && (
             <p className="text-xs text-stone-600">
-              Бюджет {budget.data.month} (UTC): учтено $
-              {(budget.data.confirmedCostMicroUsd / 1_000_000).toFixed(4)} из $
-              {(budget.data.limitMicroUsd / 1_000_000).toFixed(2)}. В резерве $
-              {(
-                (budget.data.activeReservedMicroUsd + budget.data.unknownReservedMicroUsd) /
-                1_000_000
-              ).toFixed(4)}
-              .
+              {t('budget', {
+                month: budget.data.month,
+                confirmed: new Intl.NumberFormat(localeTag(locale), {
+                  minimumFractionDigits: 4,
+                  maximumFractionDigits: 4,
+                }).format(budget.data.confirmedCostMicroUsd / 1_000_000),
+                limit: new Intl.NumberFormat(localeTag(locale), {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                }).format(budget.data.limitMicroUsd / 1_000_000),
+                reserved: new Intl.NumberFormat(localeTag(locale), {
+                  minimumFractionDigits: 4,
+                  maximumFractionDigits: 4,
+                }).format(
+                  (budget.data.activeReservedMicroUsd + budget.data.unknownReservedMicroUsd) /
+                    1_000_000,
+                ),
+              })}
             </p>
           )}
           {budget.data?.warning && !exhausted && (
             <p role="status" className="text-sm text-amber-900">
-              Использовано или зарезервировано не менее $8 бюджета AI.
+              {t('budgetWarning')}
             </p>
           )}
           {exhausted && (
             <p role="status" className="text-sm text-amber-900">
-              Бюджет AI исчерпан или зарезервирован. Просмотр и замена вещей доступны.
+              {t('exhausted')}
             </p>
           )}
           {budget.error && (
             <div role="alert" className="space-y-2 text-sm text-red-800">
-              <p>Не удалось проверить бюджет AI.</p>
+              <p>{t('budgetError')}</p>
               <Button
                 variant="outline"
                 disabled={budget.isFetching}
                 onClick={() => budget.refetch()}
               >
-                Проверить бюджет
+                {t('checkBudget')}
               </Button>
             </div>
           )}
           {result.error && (
             <div role="alert" className="space-y-2 text-sm text-red-800">
-              <p>{result.error.message}</p>
+              <p>{getErrorMessage(locale, result.error)}</p>
               <Button
                 variant="outline"
                 disabled={result.isFetching}
                 onClick={() => result.refetch()}
               >
-                Обновить результат
+                {t('refreshResult')}
               </Button>
             </div>
           )}
           {weatherStale && (
             <p role="status" className="text-sm text-amber-900">
-              Обновите погоду перед подбором образов.
+              {t('weatherStale')}
             </p>
           )}
           {start.error && (
             <p role="alert" className="text-sm text-red-800">
-              {start.error.message}
+              {getErrorMessage(locale, start.error)}
             </p>
           )}
           {active && (
             <p role="status" className="text-sm text-emerald-900">
-              {operation?.status === 'running' ? 'Подбираем образы…' : 'Ожидаем подбор образов…'}
+              {operation?.status === 'running' ? t('running') : t('queued')}
             </p>
           )}
           {active && ['connecting', 'reconnecting'].includes(connection) && (
-            <p className="text-xs text-stone-600">
-              Восстанавливаем связь со статусом. Новый подбор не запускается.
-            </p>
+            <p className="text-xs text-stone-600">{t('reconnecting')}</p>
           )}
           {operation && !isActive(operation) && operation.status !== 'succeeded' && (
             <div role="status" className="space-y-2 text-sm text-amber-900">
               <p>
                 {operation.status === 'timed_out'
-                  ? 'Время ожидания подбора истекло.'
+                  ? t('timedOut')
                   : operation.status === 'interrupted'
-                    ? 'Подбор прервался.'
-                    : 'Не удалось подобрать образы. Проверьте гардероб и условия.'}
+                    ? t('interrupted')
+                    : t('failed')}
               </p>
-              {operation.settlementState === 'unknown' && (
-                <p>Результат оплаты неизвестен, резерв сохранён. Автоматического повтора нет.</p>
-              )}
+              {operation.settlementState === 'unknown' && <p>{t('unknownPayment')}</p>}
             </div>
           )}
           {aiEnabled && (
@@ -237,20 +232,20 @@ export function OutfitPanel({
               onClick={select}
             >
               {start.isPending
-                ? 'Запускаем…'
+                ? t('starting')
                 : active
-                  ? 'Подбор выполняется'
+                  ? t('active')
                   : start.error
-                    ? 'Проверить запуск подбора'
-                    : 'Подобрать образы'}
+                    ? t('checkLaunch')
+                    : t('select')}
             </Button>
           )}
           {state?.stale && (
             <div role="status" className="rounded-xl bg-amber-50 p-4 text-sm text-amber-950">
-              <p className="font-medium">Эти образы требуют нового подбора.</p>
+              <p className="font-medium">{t('stale')}</p>
               <ul className="mt-2 list-disc pl-5">
                 {state.staleReasons.map((reason) => (
-                  <li key={reason}>{reason}</li>
+                  <li key={reason}>{staleReason(reason, t)}</li>
                 ))}
               </ul>
             </div>
@@ -264,10 +259,10 @@ export function OutfitPanel({
           )}
           <div className="flex flex-wrap gap-3">
             <Button asChild variant="outline">
-              <Link href="/wardrobe">Открыть гардероб</Link>
+              <Link href="/wardrobe">{t('wardrobe')}</Link>
             </Button>
             <Button asChild variant="outline">
-              <Link href="/demo">Посмотреть демо</Link>
+              <Link href="/demo">{t('demo')}</Link>
             </Button>
           </div>
         </div>
@@ -276,18 +271,21 @@ export function OutfitPanel({
   );
 }
 function OutfitCard({ outfit, state }: { outfit: ValidatedOutfit; state: OutfitState }) {
+  const { locale, t } = useI18n(outfitMessages);
   const garments = state.result!.snapshot.garments;
   return (
     <Card className="min-w-0 space-y-4 p-4">
       <h3 className="text-lg font-semibold">{outfit.title}</h3>
       {outfit.conditional && (
-        <p className="text-sm font-medium text-amber-900">Условно подходящий образ</p>
+        <p className="text-sm font-medium text-amber-900">{t('conditional')}</p>
       )}
-      <p className="text-sm leading-6 text-stone-600">{outfit.explanation}</p>
+      <p className="text-sm leading-6 text-stone-600">
+        {outfit.explanationSource === 'replacement' ? t('replacementChecked') : outfit.explanation}
+      </p>
       {!!outfit.warnings.length && (
         <ul className="list-disc space-y-2 pl-5 text-sm text-amber-900">
           {outfit.warnings.map((warning, index) => (
-            <li key={`${warning.code}:${index}`}>{warning.message}</li>
+            <li key={`${warning.code}:${index}`}>{warningLabel(warning, state, t, locale)}</li>
           ))}
         </ul>
       )}
@@ -297,16 +295,14 @@ function OutfitCard({ outfit, state }: { outfit: ValidatedOutfit; state: OutfitS
           const available = garment && !state.unavailableGarmentIds.includes(item.garmentId);
           return (
             <div key={item.role} className="rounded-xl border border-stone-200 p-3">
-              <p className="mb-2 text-xs text-stone-500">{roleLabels[item.role]}</p>
+              <p className="mb-2 text-xs text-stone-500">{t(`role_${item.role}`)}</p>
               {available ? (
                 <>
                   <Photo src={`/api/assets/${garment.photoId}`} alt={garment.fields.name} />
                   <p className="mt-2 text-sm font-medium">{garment.fields.name}</p>
                 </>
               ) : (
-                <p className="text-sm text-stone-500">
-                  Вещь больше недоступна. Выполните новый подбор.
-                </p>
+                <p className="text-sm text-stone-500">{t('unavailable')}</p>
               )}
               {!state.stale && available && <Replacement outfitId={outfit.id} slot={item.role} />}
             </div>
@@ -317,6 +313,7 @@ function OutfitCard({ outfit, state }: { outfit: ValidatedOutfit; state: OutfitS
   );
 }
 function Replacement({ outfitId, slot }: { outfitId: string; slot: OutfitRole }) {
+  const { locale, t } = useI18n(outfitMessages);
   const client = useQueryClient();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState('');
@@ -351,28 +348,26 @@ function Replacement({ outfitId, slot }: { outfitId: string; slot: OutfitRole })
         }}
       >
         {' '}
-        {open ? 'Закрыть замену' : `Заменить: ${roleLabels[slot]}`}{' '}
+        {open ? t('closeReplacement') : t('replace', { role: t(`role_${slot}`) })}{' '}
       </Button>
       {open && (
         <>
-          <p className="text-xs leading-5 text-stone-500">
-            Замена из гардероба без нового запроса к AI.
-          </p>
+          <p className="text-xs leading-5 text-stone-500">{t('replacementIntro')}</p>
           {candidates.isPending && (
             <p role="status" className="text-sm">
-              Проверяем варианты…
+              {t('checking')}
             </p>
           )}
           {candidates.error && (
             <p role="alert" className="text-sm text-red-800">
-              {candidates.error.message}
+              {getErrorMessage(locale, candidates.error)}
             </p>
           )}
           {candidates.data &&
             (candidates.data.candidates.length ? (
               <>
                 <label className="block text-sm">
-                  Замена: {roleLabels[slot]}
+                  {t('replacement', { role: t(`role_${slot}`) })}
                   <select
                     className="mt-2 block w-full rounded-lg border border-stone-300 bg-white p-2"
                     value={selected}
@@ -381,7 +376,7 @@ function Replacement({ outfitId, slot }: { outfitId: string; slot: OutfitRole })
                       replace.reset();
                     }}
                   >
-                    <option value="">Выберите вещь</option>
+                    <option value="">{t('choose')}</option>
                     {candidates.data.candidates.map((garment) => (
                       <option key={garment.id} value={garment.id}>
                         {garment.fields.name}
@@ -394,15 +389,15 @@ function Replacement({ outfitId, slot }: { outfitId: string; slot: OutfitRole })
                   disabled={!selected || replace.isPending || candidates.isFetching || conflict}
                   onClick={() => replace.mutate()}
                 >
-                  {replace.isPending ? 'Заменяем…' : 'Применить замену'}
+                  {replace.isPending ? t('replacing') : t('apply')}
                 </Button>
               </>
             ) : (
-              <p className="text-sm text-stone-500">Подходящих вещей для замены нет.</p>
+              <p className="text-sm text-stone-500">{t('empty')}</p>
             ))}
           {replace.error && (
             <div role="alert" className="space-y-2 text-sm text-red-800">
-              <p>{replace.error.message}</p>
+              <p>{getErrorMessage(locale, replace.error)}</p>
               {conflict && (
                 <Button
                   size="sm"
@@ -414,7 +409,7 @@ function Replacement({ outfitId, slot }: { outfitId: string; slot: OutfitRole })
                     replace.reset();
                   }}
                 >
-                  Загрузить актуальные варианты
+                  {t('refreshAlternatives')}
                 </Button>
               )}
             </div>
@@ -423,4 +418,44 @@ function Replacement({ outfitId, slot }: { outfitId: string; slot: OutfitRole })
       )}
     </div>
   );
+}
+
+type OutfitTranslator = ReturnType<typeof useI18n<typeof outfitMessages>>['t'];
+function staleReason(reason: string, t: OutfitTranslator): string {
+  const keys = {
+    'Гардероб изменился.': 'wardrobeChanged',
+    'Выбрано другое место.': 'locationChanged',
+    'Период подбора закончился.': 'periodEnded',
+    'Свежая погода недоступна.': 'freshUnavailable',
+    'Погодные условия изменились.': 'conditionsChanged',
+    'Обновите погоду перед новым подбором.': 'refreshBeforeNew',
+  } as const;
+  return t(keys[reason as keyof typeof keys] ?? 'dataChanged');
+}
+function warningLabel(
+  warning: ValidatedOutfit['warnings'][number],
+  state: OutfitState,
+  t: OutfitTranslator,
+  locale: Locale,
+): string {
+  const number = (value: number) => new Intl.NumberFormat(localeTag(locale)).format(value);
+  const garment = state.result!.snapshot.garments.find((item) => item.id === warning.garmentId);
+  if (warning.code === 'RAIN_PROTECTION')
+    return garment
+      ? t(garment.fields.rainProtection === 'absent' ? 'rainItemAbsent' : 'rainItemUnknown', {
+          name: garment.fields.name,
+        })
+      : t('rainUnknown');
+  if (warning.code === 'REMOVABLE_LAYER') return t('removable');
+  const range = state.result!.snapshot.weather.summary?.apparentTemperature;
+  const temperature = garment?.fields.temperature;
+  return garment && range && temperature
+    ? t('temperatureRange', {
+        name: garment.fields.name,
+        min: number(range.min),
+        max: number(range.max),
+        itemMin: number(temperature.min),
+        itemMax: number(temperature.max),
+      })
+    : t('temperatureGeneric');
 }

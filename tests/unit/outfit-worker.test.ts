@@ -31,6 +31,11 @@ function fixture(overrides: Partial<InternalOperation> = {}) {
 }
 afterEach(() => { vi.useRealTimers(); vi.clearAllMocks(); });
 describe('durable outfits worker', () => {
+  it.each(['en', 'ru', undefined])('passes the immutable operation language to the provider (%s)', async (locale) => {
+    const deps = fixture({ payload: { ...operation().payload, ...(locale ? { outputLocale: locale } : {}) } });
+    await runOutfitOnce(deps);
+    expect(deps.provider).toHaveBeenCalledWith(expect.objectContaining({ outputLocale: locale ?? 'ru' }));
+  });
   it('claims only outfits, publishes checked results and accounts usage', async () => {
     const deps = fixture();
     expect(await runOutfitOnce(deps)).toBe(true);

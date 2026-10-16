@@ -4,6 +4,7 @@ import type { WardrobeService } from '../wardrobe/service';
 import { readJson, readPhotoUpload } from './body';
 import { errorResponse, privateHeaders, successResponse } from './errors';
 import { guardRequest, withUploadSlot } from './guard';
+import { localeFromRequest } from '../../i18n/core';
 
 const uuid = z.uuid();
 const version = z.number().int().positive().max(2_147_483_647);
@@ -15,7 +16,7 @@ async function handle(request: Request, bucket: 'read' | 'mutation' | 'upload', 
   try { guardRequest(request, bucket); return await work(); }
   catch (error) {
     if (!request.body?.locked) void request.body?.cancel().catch(() => undefined);
-    return errorResponse(error);
+    return errorResponse(error, localeFromRequest(request));
   }
 }
 

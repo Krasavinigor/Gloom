@@ -16,7 +16,7 @@ describe('selected place and weather service', () => {
   it('takes manual coordinates from verified search cache, never from the client', async () => {
     const { service, repository, geocoding } = setup();
     await service.select({ source: 'manual', query: 'Москва', placeId: place.id, expectedVersion: 1 });
-    expect(geocoding.findCachedPlace).toHaveBeenCalledWith('Москва', place.id);
+    expect(geocoding.findCachedPlace).toHaveBeenCalledWith('Москва', place.id, 'ru');
     expect(repository.save).toHaveBeenCalledWith(place, 'manual', 1);
     geocoding.findCachedPlace.mockResolvedValue(null);
     await expect(service.select({ source: 'manual', query: 'Москва', placeId: 'invented', expectedVersion: 1 })).rejects.toMatchObject({ status: 409 });
@@ -52,4 +52,12 @@ describe('selected place and weather service', () => {
     expect((await service.context()).weather).toBeNull();
     expect(weather.get).not.toHaveBeenCalled();
   });
+});
+
+it('preserves the captured search locale when choosing a cached result', async () => {
+  const { service, geocoding } = setup();
+  await service.select({ source: 'manual', query: 'Moscow', placeId: place.id, searchLocale: 'en', expectedVersion: 1 });
+  expect(geocoding.findCachedPlace).toHaveBeenCalledWith('Moscow', place.id, 'en');
+  await service.search('Moscow');
+  expect(geocoding.search).toHaveBeenCalledWith('Moscow', 'en');
 });

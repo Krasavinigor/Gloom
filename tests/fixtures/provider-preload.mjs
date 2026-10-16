@@ -12,9 +12,14 @@ globalThis.fetch = async (input, options) => {
   if (url.hostname === 'geocoding-api.open-meteo.com') {
     const query = url.searchParams.get('name') ?? '';
     if (query === 'Ошибка') return new Response(null, { status: 503 });
-    const place = Object.values(testPlaces).find((item) => item.name === query);
-    return Response.json({ results: place ? [{ id: Number(place.id), name: place.name,
-      admin1: place.region, country: place.country, country_code: place.countryCode,
+    const englishNames = { moscow: ['Moscow', 'Moscow', 'Russia'], berlin: ['Berlin', 'Berlin', 'Germany'],
+      tallinn: ['Tallinn', 'Harju', 'Estonia'] };
+    const entry = Object.entries(testPlaces).find(([key, item]) => item.name === query
+      || englishNames[key][0].toLowerCase() === query.toLowerCase());
+    const place = entry?.[1];
+    const translated = entry && url.searchParams.get('language') === 'en' ? englishNames[entry[0]] : null;
+    return Response.json({ results: place ? [{ id: Number(place.id), name: translated?.[0] ?? place.name,
+      admin1: translated?.[1] ?? place.region, country: translated?.[2] ?? place.country, country_code: place.countryCode,
       latitude: place.latitude, longitude: place.longitude, timezone: place.timezone }] : [] });
   }
   if (url.hostname === 'api.open-meteo.com') {
@@ -32,6 +37,8 @@ globalThis.fetch = async (input, options) => {
     // The delay leaves enough time to reload the page while the durable task is running.
     await delay(3_000, undefined, { signal: options?.signal ?? (input instanceof Request ? input.signal : undefined) });
     const request = JSON.parse(options?.body ?? await input.clone().text());
+    const english = request.input.some((item) => item.role === 'developer'
+      && typeof item.content === 'string' && /\bEnglish\b/.test(item.content));
     if (request.text?.format?.name === 'weather_outfits') {
       const wardrobe = JSON.parse(request.input.find((item) => item.role === 'user').content).garments;
       if (wardrobe.some((item) => item.name.includes('E2E_PROVIDER_FAILURE'))) {
@@ -46,17 +53,19 @@ globalThis.fetch = async (input, options) => {
       });
       return Response.json({ id: 'resp_outfits_browser_fixture', status: 'completed', service_tier: 'default',
         output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ suggestions: [{
-          id: 'look-1', title: 'Образ для прогулки', explanation: 'Слои можно снять при потеплении. Защита от дождя не подтверждена.', items,
+          id: 'look-1', title: english ? 'Outfit for a walk' : 'Образ для прогулки',
+          explanation: english ? 'Remove layers as it gets warmer. Rain protection is not confirmed.'
+            : 'Слои можно снять при потеплении. Защита от дождя не подтверждена.', items,
         }] }) }] }], usage: { input_tokens: 200, output_tokens: 120,
           input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 } },
       }, { headers: { 'x-request-id': 'req_outfits_browser_fixture' } });
     }
     const proposal = { kind: 'item', fields: {
-      name: 'Зелёная футболка AI', type: 't_shirt', bodyAreas: ['torso'],
-      seasons: ['summer'], layers: ['base'], color: 'зелёный', pattern: 'однотонная',
+      name: english ? 'Green AI T-shirt' : 'Зелёная футболка AI', type: 't_shirt', bodyAreas: ['torso'],
+      seasons: ['summer'], layers: ['base'], color: english ? 'green' : 'зелёный', pattern: english ? 'plain' : 'однотонная',
       warmth: 'light', temperature: { min: 18, max: 28 },
       rainProtection: 'unknown', windProtection: 'unknown',
-    }, warnings: ['Температура комфорта указана приблизительно.'] };
+    }, warnings: [english ? 'Comfort temperatures are approximate.' : 'Температура комфорта указана приблизительно.'] };
     return Response.json({ id: 'resp_browser_fixture', status: 'completed', service_tier: 'default',
       output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify(proposal) }] }],
       usage: { input_tokens: 100, output_tokens: 80,

@@ -50,7 +50,7 @@ function forecastFixture() {
   };
 }
 
-const manualSelection = (expectedVersion = 0) => ({ source: 'manual', query: 'Москва', placeId: place.id, expectedVersion });
+const manualSelection = (expectedVersion = 0) => ({ source: 'manual', query: 'Москва', placeId: place.id, expectedVersion, searchLocale: 'en' });
 const ipSelection = (expectedVersion = 0) => ({ source: 'ip', candidate: { ...place, id: 'ip' }, expectedVersion });
 
 describe.skipIf(!url)('location HTTP handlers with PostgreSQL and isolated provider fixtures', () => {
@@ -107,6 +107,36 @@ describe.skipIf(!url)('location HTTP handlers with PostgreSQL and isolated provi
       await reconnect.destroy();
     }
     expect(weatherFetch).not.toHaveBeenCalled();
+  });
+
+  it('keeps language-specific search caches and accepts a captured search locale after switching', async () => {
+    geocodingFetch.mockImplementation(async (input) => {
+      const locale = new URL(String(input)).searchParams.get('language');
+      return Response.json({ results: [{ ...providerPlace, name: locale === 'en' ? 'Moscow' : 'Москва' }] });
+    });
+    const english = await handlers.search(request('/api/places?query=Moscow&locale=en', undefined, { cookie: 'gloom-locale=ru' }));
+    expect(await english.json()).toMatchObject({ data: [{ name: 'Moscow' }] });
+    const russian = await handlers.search(request('/api/places?query=Moscow', undefined, { cookie: 'gloom-locale=ru' }));
+    expect(await russian.json()).toMatchObject({ data: [{ name: 'Москва' }] });
+    expect(geocodingFetch).toHaveBeenCalledTimes(2);
+    const keys = await db!('geocoding_cache').select('cache_key').orderBy('cache_key');
+    expect(keys.map(row => row.cache_key)).toEqual(['en:8:moscow', 'ru:8:moscow']);
+    const chosen = await handlers.select(request('/api/location', { ...manualSelection(), query: 'Moscow' }, { cookie: 'gloom-locale=ru' }));
+    expect(await chosen.json()).toMatchObject({ data: { place: { name: 'Moscow' }, locationVersion: 1 } });
+    await handlers.search(request('/api/places?query=Moscow&locale=ru'));
+    expect((await repository!.get()).locationVersion).toBe(1);
+    expect(geocodingFetch).toHaveBeenCalledTimes(2);
+    expect((await handlers.search(request('/api/places?query=Moscow&locale=de'))).status).toBe(400);
+    expect(geocodingFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps legacy cached Russian selections valid when searchLocale is absent', async () => {
+    await handlers.search(request('/api/places?query=Москва&locale=ru'));
+    const legacy = { source: 'manual', query: 'Москва', placeId: place.id, expectedVersion: 0 };
+    const response = await handlers.select(request('/api/location', legacy));
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ data: { place, locationVersion: 1 } });
+    expect(geocodingFetch).toHaveBeenCalledTimes(1);
   });
 
   it('rejects client-authored manual coordinates, raw IP fields and malformed candidate fields', async () => {

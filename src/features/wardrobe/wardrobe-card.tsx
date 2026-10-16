@@ -1,7 +1,9 @@
 'use client';
+import { useI18n } from '@/i18n/provider';
+import { wardrobeMessages, garmentLabel, garmentCategory } from '@/i18n/messages/wardrobe';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { garmentTypeCatalog, type Garment } from './schema';
+import type { Garment } from './schema';
 import { Photo } from './photo-upload';
 
 export function WardrobeCard({
@@ -15,14 +17,16 @@ export function WardrobeCard({
   onEdit: () => void;
   onDelete: () => void;
 }) {
-  const type = garmentTypeCatalog.find((entry) => entry.value === garment.fields.type);
+  const { t, locale } = useI18n(wardrobeMessages);
   return (
     <Card className="flex flex-col p-4">
       <Photo src={`/api/assets/${garment.photoId}`} alt={garment.fields.name} />
-      <p className="mt-4 text-xs tracking-wider text-emerald-800 uppercase">{type?.category}</p>
+      <p className="mt-4 text-xs tracking-wider text-emerald-800 uppercase">
+        {garmentCategory(locale, garment.fields.type)}
+      </p>
       <h2 className="mt-1 text-lg font-semibold">{garment.fields.name}</h2>
       <p className="mt-1 text-sm text-stone-500">
-        {type?.label}
+        {garmentLabel(locale, garment.fields.type)}
         {garment.fields.color && ` · ${garment.fields.color}`}
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
@@ -30,19 +34,19 @@ export function WardrobeCard({
           size="sm"
           variant="outline"
           disabled={disabled}
-          aria-label={`Редактировать ${garment.fields.name}`}
+          aria-label={t('editName', { name: garment.fields.name })}
           onClick={onEdit}
         >
-          Редактировать
+          {t('edit')}
         </Button>
         <Button
           size="sm"
           variant="ghost"
           disabled={disabled}
-          aria-label={`Удалить ${garment.fields.name}`}
+          aria-label={t('deleteName', { name: garment.fields.name })}
           onClick={onDelete}
         >
-          Удалить
+          {t('delete')}
         </Button>
       </div>
     </Card>

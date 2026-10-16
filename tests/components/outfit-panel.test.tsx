@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import { I18nProvider, useI18n } from '@/i18n/provider';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { OutfitPanel } from '@/features/outfits/outfit-panel';
@@ -127,9 +128,11 @@ function mount(
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
   const view = render(
-    <QueryClientProvider client={client}>
-      <OutfitPanel initialResult={initialResult} aiEnabled={aiEnabled} {...options} />
-    </QueryClientProvider>,
+    <I18nProvider initialLocale="ru">
+      <QueryClientProvider client={client}>
+        <OutfitPanel initialResult={initialResult} aiEnabled={aiEnabled} {...options} />
+      </QueryClientProvider>
+    </I18nProvider>,
   );
   return { ...view, client };
 }
@@ -317,7 +320,9 @@ describe('personal outfit selection', () => {
     await user.click(screen.getByRole('button', { name: 'Заменить: Основной верх' }));
     await user.selectOptions(await screen.findByLabelText('Замена: Основной верх'), 'replacement');
     await user.click(screen.getByRole('button', { name: 'Применить замену' }));
-    expect(await screen.findByText('Образы изменились.')).toBeTruthy();
+    expect(
+      await screen.findByText('Исходные данные изменились. Запустите новый подбор.'),
+    ).toBeTruthy();
     expect(screen.getByText('Прогулка')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Применить замену' })).toHaveProperty(
       'disabled',
@@ -327,7 +332,9 @@ describe('personal outfit selection', () => {
       vi.mocked(fetch).mock.calls.filter(([, options]) => options?.method === 'PATCH'),
     ).toHaveLength(1);
     await user.click(screen.getByRole('button', { name: 'Загрузить актуальные варианты' }));
-    await waitFor(() => expect(screen.queryByText('Образы изменились.')).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByText('Исходные данные изменились. Запустите новый подбор.')).toBeNull(),
+    );
     expect(screen.getByLabelText('Замена: Основной верх')).toHaveProperty('value', '');
   });
   it('preserves the previous successful result and background when a new operation fails', async () => {
@@ -447,14 +454,16 @@ describe('personal outfit selection', () => {
       '/weather-backgrounds/rain.svg',
     );
     view.rerender(
-      <QueryClientProvider client={view.client}>
-        <OutfitPanel
-          initialResult={ready}
-          aiEnabled={false}
-          now={Date.parse('2026-10-16T10:15:00.000Z')}
-          contextWeather={contextWeather}
-        />
-      </QueryClientProvider>,
+      <I18nProvider initialLocale="ru">
+        <QueryClientProvider client={view.client}>
+          <OutfitPanel
+            initialResult={ready}
+            aiEnabled={false}
+            now={Date.parse('2026-10-16T10:15:00.000Z')}
+            contextWeather={contextWeather}
+          />
+        </QueryClientProvider>
+      </I18nProvider>,
     );
     expect(document.querySelector('img[aria-hidden="true"]')?.getAttribute('src')).toBe(
       '/weather-backgrounds/default.svg',
@@ -488,4 +497,115 @@ describe('personal outfit selection', () => {
       '/weather-backgrounds/default.svg',
     );
   });
+});
+
+function ChangeLanguage() {
+  const { setLocale } = useI18n();
+  return <button onClick={() => setLocale('en')}>Switch to English</button>;
+}
+it('translates display labels and warnings while preserving stored AI text and the background', () => {
+  const client = new QueryClient();
+  render(
+    <QueryClientProvider client={client}>
+      <OutfitPanel initialResult={ready} />
+    </QueryClientProvider>,
+  );
+  expect(screen.getByText('Прогулка')).toBeTruthy();
+  expect(screen.getByText('Съёмный слой для переменчивой погоды.')).toBeTruthy();
+  expect(screen.getByText('Conditionally suitable outfit')).toBeTruthy();
+  expect(screen.getByText('Rain protection is not confirmed.')).toBeTruthy();
+  expect(screen.getByText('Base top')).toBeTruthy();
+  expect(document.querySelector('img[aria-hidden="true"]')?.getAttribute('src')).toBe(
+    '/weather-backgrounds/rain.svg',
+  );
+  expect(fetch).not.toHaveBeenCalled();
+});
+it('retains the open replacement and selected item when switching languages', async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((url: string) =>
+      reply(
+        url === '/api/locale'
+          ? { locale: 'en' }
+          : { revision: 1, candidates: [{ ...garment, id: 'replacement' }] },
+      ),
+    ),
+  );
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <I18nProvider initialLocale="ru">
+      <QueryClientProvider client={client}>
+        <ChangeLanguage />
+        <OutfitPanel initialResult={ready} />
+      </QueryClientProvider>
+    </I18nProvider>,
+  );
+  await user.click(screen.getByRole('button', { name: 'Заменить: Основной верх' }));
+  await user.selectOptions(await screen.findByLabelText('Замена: Основной верх'), 'replacement');
+  await user.click(screen.getByRole('button', { name: 'Switch to English' }));
+  expect(await screen.findByLabelText('Replacement: Base top')).toHaveProperty(
+    'value',
+    'replacement',
+  );
+  expect(screen.getByText('Прогулка')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Apply replacement' })).toHaveProperty(
+    'disabled',
+    false,
+  );
+  expect(
+    vi.mocked(fetch).mock.calls.filter(([url]) => String(url).includes('/alternatives')),
+  ).toHaveLength(1);
+  expect(
+    vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/outfit-selections'),
+  ).toHaveLength(0);
+});
+it('localizes app-authored replacement explanations while retaining other AI text', async () => {
+  const user = userEvent.setup();
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => reply({ locale: 'en' })),
+  );
+  const client = new QueryClient();
+  const result: OutfitState = {
+    ...ready,
+    result: {
+      ...ready.result!,
+      outfits: [
+        ready.result!.outfits[0],
+        {
+          ...ready.result!.outfits[0],
+          id: 'replaced',
+          title: 'Сохранённое название',
+          explanation: 'Вещь заменена. Комплект повторно проверен по погоде и составу.',
+          explanationSource: 'replacement',
+        },
+      ],
+    },
+  };
+  render(
+    <I18nProvider initialLocale="ru">
+      <QueryClientProvider client={client}>
+        <ChangeLanguage />
+        <OutfitPanel initialResult={result} />
+      </QueryClientProvider>
+    </I18nProvider>,
+  );
+  expect(
+    screen.getByText('Вещь заменена. Комплект повторно проверен по погоде и составу.'),
+  ).toBeTruthy();
+  await user.click(screen.getByRole('button', { name: 'Switch to English' }));
+  expect(
+    await screen.findByText(
+      'Item replaced. The outfit has been checked again for the weather and completeness.',
+    ),
+  ).toBeTruthy();
+  expect(
+    screen.queryByText('Вещь заменена. Комплект повторно проверен по погоде и составу.'),
+  ).toBeNull();
+  expect(screen.getByText('Съёмный слой для переменчивой погоды.')).toBeTruthy();
+  expect(screen.getByText('Сохранённое название')).toBeTruthy();
+  expect(
+    vi.mocked(fetch).mock.calls.filter(([url]) => url === '/api/outfit-selections'),
+  ).toHaveLength(0);
 });

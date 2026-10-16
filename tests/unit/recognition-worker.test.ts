@@ -33,6 +33,11 @@ function fixture(overrides: Partial<InternalOperation> = {}) {
 afterEach(() => vi.useRealTimers());
 
 describe('durable recognition worker dispatch', () => {
+  it.each(['en', 'ru', undefined])('passes the captured language to the provider (%s)', async (locale) => {
+    const deps = fixture({ payload: { ...operation().payload, ...(locale ? { outputLocale: locale } : {}) } });
+    await runRecognitionOnce(deps);
+    expect(deps.provider).toHaveBeenCalledWith(expect.objectContaining({ outputLocale: locale ?? 'ru' }));
+  });
   it.each(['deadline', 'shutdown'])('settles a received response without publishing after %s', async (reason) => {
     const deps = fixture(); const stop = new AbortController(); let clock = now;
     deps.provider.mockImplementation(async () => {

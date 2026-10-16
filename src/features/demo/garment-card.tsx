@@ -1,14 +1,19 @@
+'use client';
+
+import { useI18n } from '@/i18n/provider';
+import { demoMessages } from '@/i18n/messages/demo';
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { DemoItem } from './fixtures';
 export function GarmentCard({ item }: { item: DemoItem }) {
+  const { t } = useI18n(demoMessages);
   return (
     <Card className="overflow-hidden">
       <div className="relative aspect-square bg-[#efeee7]">
         <Image
           src={item.image}
-          alt={`Иллюстрация: ${item.name}`}
+          alt={t('illustration', { name: item.name })}
           fill
           sizes="(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 230px"
           className="object-contain p-5"

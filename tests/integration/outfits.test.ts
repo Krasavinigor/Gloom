@@ -162,9 +162,10 @@ describe.skipIf(!url)('outfit durable snapshot and optimistic publication', () =
   it('deduplicates admission and atomically publishes only the current snapshot', async () => {
     const key = randomUUID();
     const admitted = await service().start(key);
-    expect((await service().start(key)).id).toBe(admitted.id);
+    expect((await service().start(key, 'ru')).id).toBe(admitted.id);
     expect((await service().start(randomUUID())).id).toBe(admitted.id);
     const operation = await operations!.getInternal(admitted.id);
+    expect(operation.payload).toMatchObject({ outputLocale: 'en' });
     const published = await db!.transaction((trx) =>
       repository!.publish(trx, operation, { outfits: outfits(), backgroundPresetId: 'clear-day' }),
     );
@@ -172,7 +173,7 @@ describe.skipIf(!url)('outfit durable snapshot and optimistic publication', () =
     expect(await service().get()).toMatchObject({
       revision: 1,
       stale: false,
-      result: { backgroundPresetId: 'clear-day' },
+      result: { backgroundPresetId: 'clear-day', outputLocale: 'en' },
     });
     await db!('app_state').where({ id: 'local' }).increment('wardrobe_version', 1);
     expect(
@@ -220,6 +221,7 @@ describe.skipIf(!url)('outfit durable snapshot and optimistic publication', () =
     await db!('garments').where({ id: ids[2] }).update({ deleted_at: now });
     await expect(service().start(randomUUID())).rejects.toMatchObject({
       code: 'INCOMPLETE_WARDROBE',
+      details: { missingRoles: ['footwear'], warm: false },
     });
     expect(await db!('ai_operations')).toHaveLength(0);
     await db!('garments').update({ deleted_at: now });
@@ -237,6 +239,10 @@ describe.skipIf(!url)('outfit durable snapshot and optimistic publication', () =
       expectedRevision: 1,
     });
     expect(replaced.revision).toBe(2);
+    expect(replaced.result!.outfits[0]).toMatchObject({
+      explanationSource: 'replacement',
+      explanation: 'The item was replaced. The outfit was checked again for weather and completeness.',
+    });
     expect(replaced.result!.outfits[0].items).toEqual([
       { garmentId: ids[3], role: 'base_top' },
       { garmentId: ids[1], role: 'bottom' },

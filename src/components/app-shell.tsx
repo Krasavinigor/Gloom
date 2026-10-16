@@ -1,6 +1,9 @@
+'use client';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { useI18n } from '@/i18n/provider';
+import { LanguageSwitcher } from '@/i18n/language-switcher';
 export function AppShell({
   children,
   mode,
@@ -10,25 +13,26 @@ export function AppShell({
   mode: 'demo' | 'personal';
   active: 'outfits' | 'wardrobe';
 }) {
+  const { t } = useI18n();
   const base = mode === 'demo' ? '/demo' : '';
   const links = [
     {
       href: mode === 'demo' ? '/demo' : '/outfits',
-      label: 'Образы',
+      label: t('outfits'),
       id: 'outfits',
     },
-    { href: `${base}/wardrobe`, label: 'Гардероб', id: 'wardrobe' },
+    { href: `${base}/wardrobe`, label: t('wardrobe'), id: 'wardrobe' },
   ];
   return (
     <div className="min-h-screen">
       <a href="#main-content" className="skip-link">
-        Перейти к содержимому
+        {t('skip')}
       </a>
       <header className="border-b border-stone-200/80 bg-[#faf9f5]">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-4 px-5 py-5 sm:px-8 lg:px-12">
           <Link
             href="/"
-            aria-label="Gloom — главная"
+            aria-label={t('home')}
             className="flex items-center gap-3 text-xl font-semibold tracking-tight"
           >
             <span
@@ -39,11 +43,11 @@ export function AppShell({
             </span>
             Gloom
             <span className="hidden text-xs font-normal tracking-normal text-stone-500 lg:inline">
-              ваш гардероб, ваш день
+              {t('tagline')}
             </span>
           </Link>
           <nav
-            aria-label="Основная навигация"
+            aria-label={t('navigation')}
             className="order-3 flex w-full gap-1 rounded-xl bg-stone-100 p-1 sm:order-0 sm:w-auto"
           >
             {links.map((link) => (
@@ -61,28 +65,25 @@ export function AppShell({
             href={mode === 'demo' ? '/wardrobe' : '/demo'}
             className="text-sm text-stone-600 underline-offset-4 hover:underline"
           >
-            {mode === 'demo' ? 'Мой гардероб ↗' : 'Посмотреть демо ↗'}
+            {mode === 'demo' ? t('myWardrobe') : t('demoLink')}
           </Link>
+          <LanguageSwitcher />
         </div>
       </header>
       <main id="main-content" className="mx-auto max-w-7xl px-5 py-8 sm:px-8 lg:px-12 lg:py-12">
         <div className="mb-7 flex flex-wrap items-center gap-3">
           <Badge className={mode === 'demo' ? 'bg-emerald-50 text-emerald-800' : ''}>
-            {mode === 'demo' ? 'Демонстрация' : 'Личный гардероб'}
+            {mode === 'demo' ? t('demo') : t('personal')}
           </Badge>
           <span className="text-xs text-stone-500">
-            {mode === 'demo' ? 'Готовые примеры · без расходов API' : 'Локально · без входа'}
+            {mode === 'demo' ? t('demoHint') : t('personalHint')}
           </span>
         </div>
         {children}
       </main>
       <footer className="mx-auto mt-8 flex max-w-7xl flex-wrap justify-between gap-3 border-t border-stone-200 px-5 py-6 text-xs text-stone-500 sm:px-8 lg:px-12">
-        <span>Gloom — меньше сомнений перед выходом</span>
-        <span>
-          {mode === 'demo'
-            ? 'Иллюстрации созданы для проекта'
-            : 'Личный гардероб хранится локально'}
-        </span>
+        <span>{t('footer')}</span>
+        <span>{mode === 'demo' ? t('illustrations') : t('storage')}</span>
       </footer>
     </div>
   );

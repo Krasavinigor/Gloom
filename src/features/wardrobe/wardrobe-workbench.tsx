@@ -1,4 +1,7 @@
 'use client';
+import { useI18n } from '@/i18n/provider';
+import { getErrorMessage } from '@/i18n/errors';
+import { wardrobeMessages } from '@/i18n/messages/wardrobe';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
@@ -30,12 +33,13 @@ export function WardrobeWorkbench({
   initialDraftId?: string;
   aiEnabled?: boolean;
 }) {
+  const { t, locale } = useI18n(wardrobeMessages);
   const client = useQueryClient();
   const [draftId, setDraftId] = useState<string | null>(initialDraftId ?? null);
   const [editing, setEditing] = useState<Garment | null>(null);
   const [deleting, setDeleting] = useState<Garment | null>(null);
   const [editRevision, setEditRevision] = useState(0);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<keyof typeof wardrobeMessages.en | null>(null);
   const [appliedProposal, setAppliedProposal] = useState<{
     draftId: string;
     fields: GarmentFields;
@@ -72,7 +76,7 @@ export function WardrobeWorkbench({
     mutationFn: (fields: GarmentFields) => wardrobeClient.save(draftId!, fields),
     onSuccess: async () => {
       clearDraft();
-      setNotice('Вещь сохранена в гардеробе.');
+      setNotice('saved');
       await refresh();
     },
   });
@@ -82,18 +86,14 @@ export function WardrobeWorkbench({
       clearDraft();
       save.reset();
       upload.reset();
-      setNotice(
-        result.cleanupPending
-          ? 'Черновик закрыт. Его файлы ожидают удаления.'
-          : 'Добавление отменено.',
-      );
+      setNotice(result.cleanupPending ? 'draftCleanup' : 'cancelled');
     },
   });
   const edit = useMutation({
     mutationFn: (fields: GarmentFields) => wardrobeClient.edit(editing!, fields),
     onSuccess: async () => {
       setEditing(null);
-      setNotice('Изменения сохранены.');
+      setNotice('updated');
       await refresh();
     },
   });
@@ -101,22 +101,14 @@ export function WardrobeWorkbench({
     mutationFn: () => wardrobeClient.remove(deleting!),
     onSuccess: async (result) => {
       setDeleting(null);
-      setNotice(
-        result.cleanupPending
-          ? 'Вещь удалена. Удаление файлов ещё не завершено.'
-          : 'Вещь и её фотографии удалены.',
-      );
+      setNotice(result.cleanupPending ? 'deletedCleanup' : 'deleted');
       await refresh();
     },
   });
   const cleanup = useMutation({
     mutationFn: wardrobeClient.retryCleanup,
     onSuccess: async (result) => {
-      setNotice(
-        result.cleanupPending
-          ? 'Удаление файлов ещё не завершено. Попробуйте позже.'
-          : 'Файлы удалены.',
-      );
+      setNotice(result.cleanupPending ? 'cleanupPending' : 'cleaned');
       await refresh();
     },
   });
@@ -148,7 +140,7 @@ export function WardrobeWorkbench({
     setDeleting(null);
     edit.reset();
     remove.reset();
-    if (!current) setNotice('Вещь больше не доступна в гардеробе.');
+    if (!current) setNotice('unavailable');
   }
   function beginEdit(garment: Garment) {
     setEditing(garment);
@@ -161,42 +153,35 @@ export function WardrobeWorkbench({
   const draft = draftQuery.data;
   return (
     <>
-      <p className="mb-3 text-xs tracking-[0.2em] text-emerald-800 uppercase">
-        Ваши вещи — основа каждого образа
-      </p>
-      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">Мой гардероб</h1>
-      <p className="mt-4 max-w-xl text-sm leading-6 text-stone-500">
-        Добавьте фотографию, опишите вещь и сохраните её. Описания можно изменить в любой момент.
-      </p>
+      <p className="mb-3 text-xs tracking-[0.2em] text-emerald-800 uppercase">{t('eyebrow')}</p>
+      <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">{t('title')}</h1>
+      <p className="mt-4 max-w-xl text-sm leading-6 text-stone-500">{t('intro')}</p>
       {notice && (
         <p role="status" className="mt-5 rounded-xl bg-emerald-50 p-4 text-sm text-emerald-900">
-          {notice}
+          {t(notice)}
         </p>
       )}
       {(query.error || (!snapshot && initialError)) && (
         <div role="alert" className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">
-          <p>{query.error?.message ?? initialError}</p>
+          <p>{getErrorMessage(locale, query.error ?? initialError)}</p>
           <Button
             className="mt-3"
             variant="outline"
             disabled={query.isFetching}
             onClick={() => query.refetch()}
           >
-            Повторить загрузку гардероба
+            {t('retryWardrobe')}
           </Button>
         </div>
       )}
       {actionError && (
         <div role="alert" className="mt-5 rounded-xl bg-red-50 p-4 text-sm text-red-800">
-          <p>{actionError.message}</p>
+          <p>{getErrorMessage(locale, actionError)}</p>
           {actionError instanceof WardrobeApiError && actionError.status === 409 && (
             <>
-              <p className="mt-2">
-                Ваши несохранённые исправления остались в форме. Загрузка актуальной версии заменит
-                их.
-              </p>
+              <p className="mt-2">{t('conflict')}</p>
               <Button className="mt-3" variant="outline" onClick={reloadEdited}>
-                Загрузить актуальную версию
+                {t('reload')}
               </Button>
             </>
           )}
@@ -204,13 +189,13 @@ export function WardrobeWorkbench({
       )}
       {query.isPending && (
         <p role="status" className="mt-6 text-sm text-stone-500">
-          Загружаем гардероб…
+          {t('loading')}
         </p>
       )}
       <div className="mt-8 grid items-start gap-7 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
         <Card className="p-5 sm:p-6">
           <h2 className="mb-4 text-xl font-semibold">
-            {editing ? 'Редактирование вещи' : draftId ? 'Описание новой вещи' : 'Добавить вещь'}
+            {editing ? t('editTitle') : draftId ? t('draftTitle') : t('addTitle')}
           </h2>
           {editing ? (
             <>
@@ -220,8 +205,8 @@ export function WardrobeWorkbench({
                   key={`${editing.id}:${editRevision}`}
                   fields={editing.fields}
                   busy={busy}
-                  submitLabel="Сохранить изменения"
-                  cancelLabel="Отменить изменения"
+                  submitLabel={t('saveChanges')}
+                  cancelLabel={t('cancelChanges')}
                   onSubmit={(fields) => edit.mutate(fields)}
                   onCancel={() => {
                     setEditing(null);
@@ -234,24 +219,24 @@ export function WardrobeWorkbench({
             <>
               {draftQuery.isPending && (
                 <p role="status" className="text-sm">
-                  Восстанавливаем черновик…
+                  {t('restore')}
                 </p>
               )}
               {draftQuery.error && (
                 <div role="alert" className="space-y-3 text-sm text-red-800">
-                  <p>{draftQuery.error.message}</p>
+                  <p>{getErrorMessage(locale, draftQuery.error)}</p>
                   <Button variant="outline" onClick={() => draftQuery.refetch()}>
-                    Повторить загрузку черновика
+                    {t('retryDraft')}
                   </Button>
                   <Button variant="ghost" onClick={clearDraft}>
-                    Закрыть черновик
+                    {t('closeDraft')}
                   </Button>
                 </div>
               )}
               {draft &&
                 (draft.garmentId ? (
                   <>
-                    <p className="text-sm">Эта вещь уже сохранена в гардеробе.</p>
+                    <p className="text-sm">{t('alreadySaved')}</p>
                     <Button
                       className="mt-4"
                       onClick={() => {
@@ -259,15 +244,13 @@ export function WardrobeWorkbench({
                         refresh();
                       }}
                     >
-                      Вернуться к гардеробу
+                      {t('back')}
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Photo src={`/api/assets/${draft.photoId}`} alt="Фотография новой вещи" />
-                    <p className="my-4 text-xs leading-5 text-stone-500">
-                      Черновик хранится 24 часа. До сохранения вещь не участвует в подборе.
-                    </p>
+                    <Photo src={`/api/assets/${draft.photoId}`} alt={t('newPhoto')} />
+                    <p className="my-4 text-xs leading-5 text-stone-500">{t('draftHelp')}</p>
                     <RecognitionPanel
                       key={`recognition:${draft.id}`}
                       draft={draft}
@@ -290,8 +273,8 @@ export function WardrobeWorkbench({
                           : draft.fields
                       }
                       busy={busy}
-                      submitLabel="Сохранить вещь"
-                      cancelLabel="Отменить добавление"
+                      submitLabel={t('save')}
+                      cancelLabel={t('cancel')}
                       onSubmit={(fields) => save.mutate(fields)}
                       onCancel={() => cancel.mutate()}
                     />
@@ -310,25 +293,23 @@ export function WardrobeWorkbench({
                 }}
               />
               <p className="mt-5 text-xs leading-5 text-stone-500">
-                {aiEnabled
-                  ? 'После загрузки можно распознать вещь по кнопке или описать её вручную.'
-                  : 'AI сейчас отключён. После загрузки заполните описание вручную.'}
+                {aiEnabled ? t('aiHelp') : t('manualHelp')}
               </p>
             </>
           )}
         </Card>
-        <section aria-label="Сохранённые вещи" className="min-w-0">
+        <section aria-label={t('savedItems')} className="min-w-0">
           {deleting && (
             <Card
               role="group"
-              aria-label="Подтверждение удаления"
+              aria-label={t('confirmDelete')}
               className="mb-5 space-y-3 border-red-200 p-5"
             >
-              <p>Удалить «{deleting.fields.name}» и её фотографии?</p>
-              <p className="text-sm text-stone-500">Восстановить удалённую вещь нельзя.</p>
+              <p>{t('deleteQuestion', { name: deleting.fields.name })}</p>
+              <p className="text-sm text-stone-500">{t('irreversible')}</p>
               <div className="flex flex-wrap gap-3">
                 <Button disabled={busy} onClick={() => remove.mutate()}>
-                  Да, удалить вещь
+                  {t('yesDelete')}
                 </Button>
                 <Button
                   autoFocus
@@ -339,30 +320,34 @@ export function WardrobeWorkbench({
                     remove.reset();
                   }}
                 >
-                  Оставить вещь
+                  {t('keep')}
                 </Button>
               </div>
             </Card>
           )}
           {snapshot?.pendingDeletions.map((id) => (
             <Card key={id} className="mb-5 space-y-3 p-5">
-              <p className="text-sm">Удалённая вещь скрыта. Её файлы ожидают удаления.</p>
+              <p className="text-sm">{t('pendingPhotoDelete')}</p>
               <Button variant="outline" disabled={busy} onClick={() => cleanup.mutate(id)}>
-                Повторить удаление файлов
+                {t('retryCleanup')}
               </Button>
             </Card>
           ))}
           {snapshot?.garments.length === 0 && (
             <Card className="flex min-h-64 flex-col items-center justify-center bg-[#efeee7] p-8 text-center">
-              <h2 className="text-xl font-semibold">В гардеробе пока нет вещей</h2>
-              <p className="mt-3 text-sm leading-6 text-stone-500">
-                Начните с одной фотографии. Сохранённая вещь появится здесь.
-              </p>
+              <h2 className="text-xl font-semibold">{t('emptyTitle')}</h2>
+              <p className="mt-3 text-sm leading-6 text-stone-500">{t('emptyHelp')}</p>
             </Card>
           )}
           {!!snapshot?.garments.length && (
             <>
-              <p className="mb-4 text-sm text-stone-500">Вещей: {snapshot.garments.length}</p>
+              <p className="mb-4 text-sm text-stone-500">
+                {t('count', {
+                  count: new Intl.NumberFormat(locale === 'ru' ? 'ru-RU' : 'en-US').format(
+                    snapshot.garments.length,
+                  ),
+                })}
+              </p>
               <div className="grid gap-4 sm:grid-cols-2">
                 {snapshot.garments.map((garment) => (
                   <WardrobeCard

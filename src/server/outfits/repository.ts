@@ -1,4 +1,5 @@
 import { getBackgroundPreset, selectBackground } from '../../features/backgrounds/catalog';
+import type { Locale } from '../../i18n/core';
 import type { Knex } from 'knex';
 import { z } from 'zod';
 import { placeSchema, type Place } from '../../features/location/schema';
@@ -29,6 +30,7 @@ const inputSnapshotSchema = z.object({
 const payloadSchema = z.strictObject({
   snapshot: inputSnapshotSchema,
   expectedRevision: z.number().int().nonnegative(),
+  outputLocale: z.enum(['en', 'ru']).default('ru'),
 });
 export type OutfitInputSnapshot = {
   wardrobeVersion: number;
@@ -38,6 +40,7 @@ export type OutfitInputSnapshot = {
   garments: Garment[];
 };
 export type OutfitResult = {
+  outputLocale?: Locale;
   outfits: ValidatedOutfit[];
   snapshot: OutfitInputSnapshot;
   backgroundPresetId: string;
@@ -234,7 +237,9 @@ export function createOutfitsRepository(
     input: { outfits: ValidatedOutfit[]; backgroundPresetId: string },
   ): Promise<boolean> {
     if (!(await canDispatch(trx, operation))) return false;
-    const { snapshot, expectedRevision } = parseOutfitOperationPayload(operation.payload);
+    const { snapshot, expectedRevision, outputLocale } = parseOutfitOperationPayload(
+      operation.payload,
+    );
     if (input.outfits.length < 1 || input.outfits.length > 3)
       throw new Error('Invalid outfit result count');
     if (
@@ -262,6 +267,7 @@ export function createOutfitsRepository(
     )
       throw new Error('Invalid outfit background preset');
     const result: OutfitResult = {
+      outputLocale,
       outfits: validated.flatMap((item) => (item.valid ? [item.outfit] : [])),
       snapshot,
       backgroundPresetId: z.string().min(1).max(100).parse(input.backgroundPresetId),
@@ -303,6 +309,7 @@ export function createOutfitsRepository(
     input: { outfitId: string; garmentId: string; replacementId: string; expectedRevision: number },
     weather: WeatherSnapshot,
     now = clock(),
+    outputLocale: Locale = 'en',
   ) {
     z.object({
       outfitId: z.string().min(1).max(100),
@@ -341,7 +348,10 @@ export function createOutfitsRepository(
       const next = {
         id: outfit.id,
         title: outfit.title,
-        explanation: 'Вещь заменена. Комплект повторно проверен по погоде и составу.',
+        explanation:
+          outputLocale === 'ru'
+            ? 'Вещь заменена. Комплект повторно проверен по погоде и составу.'
+            : 'The item was replaced. The outfit was checked again for weather and completeness.',
         items: outfit.items.map((item) =>
           item.garmentId === input.garmentId ? { ...item, garmentId: input.replacementId } : item,
         ),
@@ -356,7 +366,9 @@ export function createOutfitsRepository(
           result: {
             ...result,
             outfits: result.outfits.map((item) =>
-              item.id === input.outfitId ? validated.outfit : item,
+              item.id === input.outfitId
+                ? { ...validated.outfit, explanationSource: 'replacement' }
+                : item,
             ),
           },
           updated_at: now,

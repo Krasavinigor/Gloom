@@ -1,25 +1,86 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  render as testingRender,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { I18nProvider } from '@/i18n/provider';
+import { getErrorMessage } from '@/i18n/errors';
+const render = (element: React.ReactNode) =>
+  testingRender(element, {
+    wrapper: ({ children }) => <I18nProvider initialLocale="ru">{children}</I18nProvider>,
+  });
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WardrobeWorkbench } from '@/features/wardrobe/wardrobe-workbench';
 import { GarmentForm } from '@/features/wardrobe/garment-form';
 
-const fields = { name: 'Моя футболка', type: 't_shirt' as const, bodyAreas: ['torso' as const], seasons: ['summer' as const], layers: ['base' as const], color: 'Белый', pattern: '', warmth: 'light' as const, temperature: null, rainProtection: 'unknown' as const, windProtection: 'unknown' as const };
-const garment = { id: '22222222-2222-4222-8222-222222222222', photoId: '33333333-3333-4333-8333-333333333333', fields, version: 1, createdAt: '2026-10-14T10:00:00.000Z', updatedAt: '2026-10-14T10:00:00.000Z' };
+const fields = {
+  name: 'Моя футболка',
+  type: 't_shirt' as const,
+  bodyAreas: ['torso' as const],
+  seasons: ['summer' as const],
+  layers: ['base' as const],
+  color: 'Белый',
+  pattern: '',
+  warmth: 'light' as const,
+  temperature: null,
+  rainProtection: 'unknown' as const,
+  windProtection: 'unknown' as const,
+};
+const garment = {
+  id: '22222222-2222-4222-8222-222222222222',
+  photoId: '33333333-3333-4333-8333-333333333333',
+  fields,
+  version: 1,
+  createdAt: '2026-10-14T10:00:00.000Z',
+  updatedAt: '2026-10-14T10:00:00.000Z',
+};
 const empty = { garments: [], wardrobeVersion: 0, pendingDeletions: [] };
-const draft = { id: '11111111-1111-4111-8111-111111111111', photoId: garment.photoId, fields: null, garmentId: null, expiresAt: '2026-10-15T10:00:00.000Z' };
-const reply = (data: unknown) => Promise.resolve(new Response(JSON.stringify({ success: true, data }), { headers: { 'content-type': 'application/json' } }));
+const draft = {
+  id: '11111111-1111-4111-8111-111111111111',
+  photoId: garment.photoId,
+  fields: null,
+  garmentId: null,
+  expiresAt: '2026-10-15T10:00:00.000Z',
+};
+const reply = (data: unknown) =>
+  Promise.resolve(
+    new Response(JSON.stringify({ success: true, data }), {
+      headers: { 'content-type': 'application/json' },
+    }),
+  );
 function mount(props: Parameters<typeof WardrobeWorkbench>[0]) {
-  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
-  return render(<QueryClientProvider client={client}><WardrobeWorkbench {...props} /></QueryClientProvider>);
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  });
+  return render(
+    <QueryClientProvider client={client}>
+      <WardrobeWorkbench {...props} />
+    </QueryClientProvider>,
+  );
 }
 beforeEach(() => {
-  vi.stubGlobal('fetch', vi.fn(() => reply(empty)));
-  vi.stubGlobal('URL', class extends URL { static createObjectURL = vi.fn(() => 'blob:preview'); static revokeObjectURL = vi.fn(); });
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(() => reply(empty)),
+  );
+  vi.stubGlobal(
+    'URL',
+    class extends URL {
+      static createObjectURL = vi.fn(() => 'blob:preview');
+      static revokeObjectURL = vi.fn();
+    },
+  );
 });
-afterEach(() => { cleanup(); vi.unstubAllGlobals(); window.history.replaceState(null, '', '/'); });
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+  window.history.replaceState(null, '', '/');
+});
 
 describe('personal wardrobe', () => {
   it('focuses the safe action when asking for deletion confirmation', async () => {
@@ -33,25 +94,46 @@ describe('personal wardrobe', () => {
   });
   it('keeps other card actions disabled until editing is explicitly saved or cancelled', async () => {
     const user = userEvent.setup();
-    const second = { ...garment, id: '44444444-4444-4444-8444-444444444444', fields: { ...fields, name: 'Вторая вещь' } };
-    mount({ initialData: { garments: [garment, second], wardrobeVersion: 2, pendingDeletions: [] } });
+    const second = {
+      ...garment,
+      id: '44444444-4444-4444-8444-444444444444',
+      fields: { ...fields, name: 'Вторая вещь' },
+    };
+    mount({
+      initialData: { garments: [garment, second], wardrobeVersion: 2, pendingDeletions: [] },
+    });
     await user.click(screen.getByRole('button', { name: 'Редактировать Моя футболка' }));
     await user.clear(screen.getByLabelText('Название вещи'));
     await user.type(screen.getByLabelText('Название вещи'), 'Мои исправления');
-    expect(screen.getByRole('button', { name: 'Редактировать Вторая вещь' })).toHaveProperty('disabled', true);
-    expect(screen.getByRole('button', { name: 'Удалить Вторая вещь' })).toHaveProperty('disabled', true);
+    expect(screen.getByRole('button', { name: 'Редактировать Вторая вещь' })).toHaveProperty(
+      'disabled',
+      true,
+    );
+    expect(screen.getByRole('button', { name: 'Удалить Вторая вещь' })).toHaveProperty(
+      'disabled',
+      true,
+    );
     await user.click(screen.getByRole('button', { name: 'Отменить изменения' }));
-    expect(screen.getByRole('button', { name: 'Редактировать Вторая вещь' })).toHaveProperty('disabled', false);
+    expect(screen.getByRole('button', { name: 'Редактировать Вторая вещь' })).toHaveProperty(
+      'disabled',
+      false,
+    );
   });
   it('previews a selected photo before uploading, then saves a manual description', async () => {
     const user = userEvent.setup();
     const fetchMock = vi.fn((url: string, options?: RequestInit) => {
       if (url === '/api/garment-drafts') return reply(draft);
       if (url === '/api/garments' && options?.method === 'POST') return reply(garment);
-      return reply(options ? { garments: [garment], wardrobeVersion: 1, pendingDeletions: [] } : empty);
+      return reply(
+        options ? { garments: [garment], wardrobeVersion: 1, pendingDeletions: [] } : empty,
+      );
     });
-    vi.stubGlobal('fetch', fetchMock); mount({ initialData: empty });
-    await user.upload(screen.getByLabelText('Фотография вещи'), new File(['photo'], 'shirt.png', { type: 'image/png' }));
+    vi.stubGlobal('fetch', fetchMock);
+    mount({ initialData: empty });
+    await user.upload(
+      screen.getByLabelText('Фотография вещи'),
+      new File(['photo'], 'shirt.png', { type: 'image/png' }),
+    );
     expect(screen.getByAltText('Предпросмотр выбранной фотографии')).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Загрузить фото' }));
@@ -59,37 +141,78 @@ describe('personal wardrobe', () => {
     await user.click(screen.getByRole('checkbox', { name: 'Лето' }));
     await user.click(screen.getByRole('button', { name: 'Сохранить вещь' }));
     await waitFor(() => expect(screen.queryByLabelText('Название вещи')).toBeNull());
-    const saved = fetchMock.mock.calls.find(([url, options]) => url === '/api/garments' && options?.method === 'POST');
+    const saved = fetchMock.mock.calls.find(
+      ([url, options]) => url === '/api/garments' && options?.method === 'POST',
+    );
     expect(JSON.parse(saved![1]!.body as string).fields.name).toBe('Моя футболка');
   });
   it('rejects unsupported photos before a network upload', async () => {
     mount({ initialData: empty });
-    fireEvent.change(screen.getByLabelText('Фотография вещи'), { target: { files: [new File(['heic'], 'photo.heic', { type: 'image/heic' })] } });
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', expect.stringContaining('JPEG, PNG или WebP'));
+    fireEvent.change(screen.getByLabelText('Фотография вещи'), {
+      target: { files: [new File(['heic'], 'photo.heic', { type: 'image/heic' })] },
+    });
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      expect.stringContaining('JPEG, PNG или WebP'),
+    );
     expect(fetch).not.toHaveBeenCalled();
   });
   it('preserves edited fields on version conflict and reloads only on request', async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn((_url: string, options?: RequestInit) => options?.method === 'PATCH'
-      ? Promise.resolve(new Response(JSON.stringify({ success: false, error: { code: 'VERSION_CONFLICT', message: 'Вещь уже изменена. Обновите данные.' } }), { status: 409 }))
-      : reply({ garments: [{ ...garment, version: 2 }], wardrobeVersion: 2, pendingDeletions: [] }));
-    vi.stubGlobal('fetch', fetchMock); mount({ initialData: { garments: [garment], wardrobeVersion: 1, pendingDeletions: [] } });
+    const fetchMock = vi.fn((_url: string, options?: RequestInit) =>
+      options?.method === 'PATCH'
+        ? Promise.resolve(
+            new Response(
+              JSON.stringify({
+                success: false,
+                error: { code: 'VERSION_CONFLICT', message: 'Вещь уже изменена. Обновите данные.' },
+              }),
+              { status: 409 },
+            ),
+          )
+        : reply({
+            garments: [{ ...garment, version: 2 }],
+            wardrobeVersion: 2,
+            pendingDeletions: [],
+          }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    mount({ initialData: { garments: [garment], wardrobeVersion: 1, pendingDeletions: [] } });
     await user.click(screen.getByRole('button', { name: 'Редактировать Моя футболка' }));
-    await user.clear(screen.getByLabelText('Название вещи')); await user.type(screen.getByLabelText('Название вещи'), 'Своё исправление');
+    await user.clear(screen.getByLabelText('Название вещи'));
+    await user.type(screen.getByLabelText('Название вещи'), 'Своё исправление');
     await user.click(screen.getByRole('button', { name: 'Сохранить изменения' }));
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', expect.stringContaining('Вещь уже изменена'));
-    expect((screen.getByLabelText('Название вещи') as HTMLInputElement).value).toBe('Своё исправление');
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      expect.stringContaining('Вещь уже изменена'),
+    );
+    expect((screen.getByLabelText('Название вещи') as HTMLInputElement).value).toBe(
+      'Своё исправление',
+    );
     await user.click(screen.getByRole('button', { name: 'Загрузить актуальную версию' }));
-    await waitFor(() => expect((screen.getByLabelText('Название вещи') as HTMLInputElement).value).toBe('Моя футболка'));
+    await waitFor(() =>
+      expect((screen.getByLabelText('Название вещи') as HTMLInputElement).value).toBe(
+        'Моя футболка',
+      ),
+    );
   });
   it('asks for confirmation before deletion and lets cleanup be retried', async () => {
-    const user = userEvent.setup(); let deleted = false;
+    const user = userEvent.setup();
+    let deleted = false;
     const fetchMock = vi.fn((url: string, options?: RequestInit) => {
-      if (options?.method === 'DELETE') { deleted = true; return reply({ cleanupPending: true }); }
+      if (options?.method === 'DELETE') {
+        deleted = true;
+        return reply({ cleanupPending: true });
+      }
       if (url.endsWith('/cleanup')) return reply({ cleanupPending: false });
-      return reply(deleted ? { ...empty, pendingDeletions: [garment.id] } : { garments: [garment], wardrobeVersion: 1, pendingDeletions: [] });
+      return reply(
+        deleted
+          ? { ...empty, pendingDeletions: [garment.id] }
+          : { garments: [garment], wardrobeVersion: 1, pendingDeletions: [] },
+      );
     });
-    vi.stubGlobal('fetch', fetchMock); mount({ initialData: { garments: [garment], wardrobeVersion: 1, pendingDeletions: [] } });
+    vi.stubGlobal('fetch', fetchMock);
+    mount({ initialData: { garments: [garment], wardrobeVersion: 1, pendingDeletions: [] } });
     await user.click(screen.getByRole('button', { name: 'Удалить Моя футболка' }));
     expect(fetchMock).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Да, удалить вещь' }));
@@ -98,8 +221,11 @@ describe('personal wardrobe', () => {
   });
   it('restores an unexpired draft after refreshing its URL and cancels explicitly', async () => {
     const user = userEvent.setup();
-    const fetchMock = vi.fn((_url: string, options?: RequestInit) => reply(options?.method === 'DELETE' ? { cleanupPending: false } : draft));
-    vi.stubGlobal('fetch', fetchMock); mount({ initialData: empty, initialDraftId: draft.id });
+    const fetchMock = vi.fn((_url: string, options?: RequestInit) =>
+      reply(options?.method === 'DELETE' ? { cleanupPending: false } : draft),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    mount({ initialData: empty, initialDraftId: draft.id });
     expect(await screen.findByLabelText('Название вещи')).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Отменить добавление' }));
     await waitFor(() => expect(screen.queryByLabelText('Название вещи')).toBeNull());
@@ -107,27 +233,65 @@ describe('personal wardrobe', () => {
   });
   it('retains the draft and form when cancellation fails', async () => {
     const user = userEvent.setup();
-    vi.stubGlobal('fetch', vi.fn((_url: string, options?: RequestInit) => options?.method === 'DELETE'
-      ? Promise.resolve(new Response(JSON.stringify({ success: false, error: { code: 'STORAGE_ERROR', message: 'Попробуйте позже.' } }), { status: 503 }))
-      : reply(draft)));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn((_url: string, options?: RequestInit) =>
+        options?.method === 'DELETE'
+          ? Promise.resolve(
+              new Response(
+                JSON.stringify({
+                  success: false,
+                  error: { code: 'STORAGE_ERROR', message: 'Попробуйте позже.' },
+                }),
+                { status: 503 },
+              ),
+            )
+          : reply(draft),
+      ),
+    );
     mount({ initialData: empty, initialDraftId: draft.id });
     await user.type(await screen.findByLabelText('Название вещи'), 'Несохранённая вещь');
     await user.click(screen.getByRole('button', { name: 'Отменить добавление' }));
-    expect(await screen.findByRole('alert')).toHaveProperty('textContent', 'Попробуйте позже.');
-    expect((screen.getByLabelText('Название вещи') as HTMLInputElement).value).toBe('Несохранённая вещь');
+    expect(await screen.findByRole('alert')).toHaveProperty(
+      'textContent',
+      getErrorMessage('ru', 'STORAGE_ERROR'),
+    );
+    expect((screen.getByLabelText('Название вещи') as HTMLInputElement).value).toBe(
+      'Несохранённая вещь',
+    );
   });
   it('explains an expired draft and lets the user return to uploading', async () => {
     const user = userEvent.setup();
-    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify({ success: false, error: { code: 'DRAFT_EXPIRED', message: 'Срок черновика истёк.' } }), { status: 410 }))));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve(
+          new Response(
+            JSON.stringify({
+              success: false,
+              error: { code: 'DRAFT_EXPIRED', message: 'Срок черновика истёк.' },
+            }),
+            { status: 410 },
+          ),
+        ),
+      ),
+    );
     mount({ initialData: empty, initialDraftId: draft.id });
-    expect(await screen.findByText('Срок черновика истёк.')).toBeTruthy();
+    expect(
+      await screen.findByText('Черновик недоступен. Загрузите фотографию снова.'),
+    ).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Закрыть черновик' }));
     expect(screen.getByLabelText('Фотография вещи')).toBeTruthy();
   });
   it('shows network failure and recovers wardrobe loading on demand', async () => {
-    const user = userEvent.setup(); const fetchMock = vi.fn().mockRejectedValueOnce(new Error('offline')).mockImplementation(() => reply(empty));
-    vi.stubGlobal('fetch', fetchMock); mount({});
-    expect(await screen.findByText('Нет связи с приложением. Попробуйте ещё раз.')).toBeTruthy();
+    const user = userEvent.setup();
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('offline'))
+      .mockImplementation(() => reply(empty));
+    vi.stubGlobal('fetch', fetchMock);
+    mount({});
+    expect(await screen.findByText(/Связь прервалась/)).toBeTruthy();
     await user.click(screen.getByRole('button', { name: 'Повторить загрузку гардероба' }));
     expect(await screen.findByText('В гардеробе пока нет вещей')).toBeTruthy();
   });
@@ -139,10 +303,15 @@ describe('personal wardrobe', () => {
   });
   it('rejects empty and oversized files before uploading', async () => {
     mount({ initialData: empty });
-    const oversized = new File(['photo'], 'large.png', { type: 'image/png' }); Object.defineProperty(oversized, 'size', { value: 10 * 1024 * 1024 + 1 });
+    const oversized = new File(['photo'], 'large.png', { type: 'image/png' });
+    Object.defineProperty(oversized, 'size', { value: 10 * 1024 * 1024 + 1 });
     fireEvent.change(screen.getByLabelText('Фотография вещи'), { target: { files: [oversized] } });
-    expect(await screen.findByText('Фотография должна быть не пустой и не больше 10 МБ.')).toBeTruthy();
-    fireEvent.change(screen.getByLabelText('Фотография вещи'), { target: { files: [new File([], 'empty.png', { type: 'image/png' })] } });
+    expect(
+      await screen.findByText('Фотография должна быть не пустой и не больше 10 МБ.'),
+    ).toBeTruthy();
+    fireEvent.change(screen.getByLabelText('Фотография вещи'), {
+      target: { files: [new File([], 'empty.png', { type: 'image/png' })] },
+    });
     expect(screen.queryByRole('button', { name: 'Загрузить фото' })).toBeNull();
     expect(fetch).not.toHaveBeenCalled();
   });
@@ -150,8 +319,17 @@ describe('personal wardrobe', () => {
 
 describe('manual garment fields', () => {
   it('validates the name and season before submitting', async () => {
-    const user = userEvent.setup(); const submit = vi.fn();
-    render(<GarmentForm busy={false} submitLabel="Сохранить вещь" cancelLabel="Отмена" onSubmit={submit} onCancel={vi.fn()} />);
+    const user = userEvent.setup();
+    const submit = vi.fn();
+    render(
+      <GarmentForm
+        busy={false}
+        submitLabel="Сохранить вещь"
+        cancelLabel="Отмена"
+        onSubmit={submit}
+        onCancel={vi.fn()}
+      />,
+    );
     await user.click(screen.getByRole('button', { name: 'Сохранить вещь' }));
     expect(await screen.findByText('Укажите название вещи (до 120 символов).')).toBeTruthy();
     await user.type(screen.getByLabelText('Название вещи'), 'Платье');
@@ -160,17 +338,35 @@ describe('manual garment fields', () => {
     expect(submit).not.toHaveBeenCalled();
   });
   it('updates catalog defaults, supports uncertain properties and an optional temperature range', async () => {
-    const user = userEvent.setup(); const submit = vi.fn();
-    render(<GarmentForm fields={fields} busy={false} submitLabel="Сохранить" cancelLabel="Отмена" onSubmit={submit} onCancel={vi.fn()} />);
+    const user = userEvent.setup();
+    const submit = vi.fn();
+    render(
+      <GarmentForm
+        fields={fields}
+        busy={false}
+        submitLabel="Сохранить"
+        cancelLabel="Отмена"
+        onSubmit={submit}
+        onCancel={vi.fn()}
+      />,
+    );
     await user.selectOptions(screen.getByLabelText('Тип вещи'), 'sandals');
     expect(screen.getByText('Слой для обуви и головного убора не применяется.')).toBeTruthy();
     await user.click(screen.getByRole('checkbox', { name: 'Указать диапазон' }));
-    await user.clear(screen.getByLabelText('От, °C')); await user.type(screen.getByLabelText('От, °C'), '15');
-    await user.clear(screen.getByLabelText('До, °C')); await user.type(screen.getByLabelText('До, °C'), '30');
+    await user.clear(screen.getByLabelText('От, °C'));
+    await user.type(screen.getByLabelText('От, °C'), '15');
+    await user.clear(screen.getByLabelText('До, °C'));
+    await user.type(screen.getByLabelText('До, °C'), '30');
     await user.selectOptions(screen.getByLabelText('Защита от дождя'), 'absent');
     await user.selectOptions(screen.getByLabelText('Теплота'), 'light');
     await user.click(screen.getByRole('button', { name: 'Сохранить' }));
     await waitFor(() => expect(submit).toHaveBeenCalled());
-    expect(submit.mock.calls[0][0]).toMatchObject({ type: 'sandals', bodyAreas: ['feet'], layers: [], rainProtection: 'absent', temperature: { min: 15, max: 30 } });
+    expect(submit.mock.calls[0][0]).toMatchObject({
+      type: 'sandals',
+      bodyAreas: ['feet'],
+      layers: [],
+      rainProtection: 'absent',
+      temperature: { min: 15, max: 30 },
+    });
   });
 });

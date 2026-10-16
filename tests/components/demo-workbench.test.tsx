@@ -3,13 +3,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { DemoWorkbench } from '@/features/demo/demo-workbench';
+import { I18nProvider } from '@/i18n/provider';
 
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe('demo selection', () => {
   it('requires an explicit selection and clears it when weather changes', async () => {
     const user = userEvent.setup();
-    render(<DemoWorkbench />);
+    render(<I18nProvider initialLocale="ru"><DemoWorkbench /></I18nProvider>);
     expect(screen.queryByRole('heading', { name: 'Лёгкий день' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Вопросы об образах' })).toBeNull();
     expect(screen.queryByRole('button', { name: 'Почему эти вещи?' })).toBeNull();
@@ -24,7 +25,7 @@ describe('demo selection', () => {
   });
   it('shows ready answers without network requests or an AI claim', async () => {
     const fetchSpy = vi.fn(); vi.stubGlobal('fetch', fetchSpy);
-    const user = userEvent.setup(); render(<DemoWorkbench />);
+    const user = userEvent.setup(); render(<I18nProvider initialLocale="ru"><DemoWorkbench /></I18nProvider>);
     await user.click(screen.getByRole('button', { name: 'Подобрать образы' }));
     await user.click(screen.getByRole('button', { name: 'Вопросы об образах' }));
     await user.click(screen.getByRole('button', { name: 'Почему эти вещи?' }));

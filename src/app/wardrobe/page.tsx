@@ -6,7 +6,14 @@ import { getWardrobeService } from '@/server/wardrobe/runtime';
 import { errorResponse } from '@/server/http/errors';
 import { parseServerEnvironment } from '@/server/config/environment';
 
-export const metadata: Metadata = { title: 'Мой гардероб' };
+import { getServerLocale } from '@/i18n/server';
+import { translate } from '@/i18n/core';
+import { commonMessages } from '@/i18n/messages/common';
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: { absolute: translate(await getServerLocale(), commonMessages, 'wardrobeTitle') },
+  };
+}
 export const dynamic = 'force-dynamic';
 
 export default async function WardrobePage({
@@ -14,12 +21,13 @@ export default async function WardrobePage({
 }: {
   searchParams: Promise<{ draft?: string | string[] }>;
 }) {
+  const locale = await getServerLocale();
   let initialData: WardrobeSnapshot | undefined;
   let initialError: string | undefined;
   try {
     initialData = await (await getWardrobeService()).list();
   } catch (error) {
-    initialError = (await errorResponse(error).json()).error.message;
+    initialError = (await errorResponse(error, locale).json()).error.code;
   }
   const params = await searchParams;
   const initialDraftId = typeof params.draft === 'string' ? params.draft : undefined;

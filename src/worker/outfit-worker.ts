@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import { isLocale, type Locale } from '../i18n/core';
 import { selectBackground } from '../features/backgrounds/catalog';
 import { validateOutfitSuggestions } from '../features/outfits/validation';
 import type { ValidatedOutfit } from '../features/outfits/schema';
@@ -19,7 +20,7 @@ export type OutfitWorkerDependencies = {
     canDispatch(transaction: Knex.Transaction, operation: InternalOperation): Promise<boolean>;
     publish(transaction: Knex.Transaction, operation: InternalOperation, result: { outfits: ValidatedOutfit[]; backgroundPresetId: string }): Promise<boolean>;
   };
-  provider(input: { snapshot: OutfitProviderSnapshot; signal: AbortSignal }): Promise<OutfitResult>;
+  provider(input: { snapshot: OutfitProviderSnapshot; signal: AbortSignal; outputLocale?: Locale }): Promise<OutfitResult>;
   signal?: AbortSignal;
   now?: () => Date;
 };
@@ -37,7 +38,7 @@ async function markCurrent(deps: OutfitWorkerDependencies, operation: InternalOp
   return marked;
 }
 
-async function dispatch(deps: OutfitWorkerDependencies, snapshot: OutfitProviderSnapshot, remainingMs: number) {
+async function dispatch(deps: OutfitWorkerDependencies, snapshot: OutfitProviderSnapshot, remainingMs: number, outputLocale: Locale) {
   const controller = new AbortController();
   const stop = () => controller.abort('WORKER_STOPPED');
   const timer = setTimeout(() => controller.abort('DEADLINE_EXCEEDED'), remainingMs);
@@ -47,7 +48,7 @@ async function dispatch(deps: OutfitWorkerDependencies, snapshot: OutfitProvider
   deps.signal?.addEventListener('abort', stop, { once: true });
   if (deps.signal?.aborted) stop();
   try {
-    const request = controller.signal.aborted ? Promise.reject(new Error('Outfit request aborted')) : deps.provider({ snapshot, signal: controller.signal });
+    const request = controller.signal.aborted ? Promise.reject(new Error('Outfit request aborted')) : deps.provider({ snapshot, signal: controller.signal, outputLocale });
     return await Promise.race([request, aborted]);
   } finally {
     clearTimeout(timer);
@@ -58,7 +59,8 @@ async function dispatch(deps: OutfitWorkerDependencies, snapshot: OutfitProvider
 async function runDispatched(deps: OutfitWorkerDependencies, operation: InternalOperation, snapshot: OutfitProviderSnapshot, now: () => Date) {
   let result: OutfitResult;
   try {
-    result = await dispatch(deps, snapshot, Math.max(1, Date.parse(operation.deadlineAt) - +now()));
+    const outputLocale = isLocale(operation.payload?.outputLocale) ? operation.payload.outputLocale : 'ru';
+    result = await dispatch(deps, snapshot, Math.max(1, Date.parse(operation.deadlineAt) - +now()), outputLocale);
   } catch (error) {
     const stopped = deps.signal?.aborted;
     const timeout = !stopped && (Date.parse(operation.deadlineAt) <= +now() || (error instanceof Error && error.message === 'Outfit request aborted'));

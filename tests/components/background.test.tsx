@@ -4,6 +4,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { WeatherBackground } from '@/features/backgrounds/weather-background';
 import userEvent from '@testing-library/user-event';
 import { DemoWorkbench } from '@/features/demo/demo-workbench';
+import { I18nProvider } from '@/i18n/provider';
 
 afterEach(cleanup);
 it('keeps content readable while decorative images load and fall back on an error', () => {
@@ -42,7 +43,7 @@ it('uses neutral decoration when the result is stale or its preset is unknown', 
 
 it('uses the shared catalog in demo only after an explicit outfit selection', async () => {
   const user = userEvent.setup();
-  const { container } = render(<DemoWorkbench />);
+  const { container } = render(<I18nProvider initialLocale="ru"><DemoWorkbench /></I18nProvider>);
   const background = () =>
     container.querySelector('img[src^="/weather-backgrounds/"]')!.getAttribute('src');
   expect(background()).toBe('/weather-backgrounds/default.svg');

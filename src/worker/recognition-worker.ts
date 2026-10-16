@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import { isLocale, type Locale } from '../i18n/core';
 import type { RecognitionProposal } from '../features/recognition/schema';
 import type { InternalOperation, TerminalStatus } from '../server/operations/schema';
 import { recognitionPricing, recognitionUsageCostMicroUsd } from '../server/recognition/pricing';
@@ -28,7 +29,7 @@ export type RecognitionWorkerDependencies = {
     canDispatch(transaction: Knex.Transaction, operation: InternalOperation): Promise<boolean>;
     publish(transaction: Knex.Transaction, operation: InternalOperation, proposal: RecognitionProposal): Promise<boolean>;
   };
-  provider(input: { photo: Buffer; signal: AbortSignal }): Promise<RecognitionProviderResult>;
+  provider(input: { photo: Buffer; signal: AbortSignal; outputLocale?: Locale }): Promise<RecognitionProviderResult>;
   signal?: AbortSignal;
   now?: () => Date;
 };
@@ -56,7 +57,7 @@ async function markCurrent(deps: RecognitionWorkerDependencies, operation: Inter
   return marked;
 }
 
-async function dispatch(deps: RecognitionWorkerDependencies, photo: Buffer, remainingMs: number) {
+async function dispatch(deps: RecognitionWorkerDependencies, photo: Buffer, remainingMs: number, outputLocale: Locale) {
   const controller = new AbortController();
   const stop = () => controller.abort('WORKER_STOPPED');
   const timer = setTimeout(() => controller.abort('DEADLINE_EXCEEDED'), remainingMs);
@@ -68,7 +69,7 @@ async function dispatch(deps: RecognitionWorkerDependencies, photo: Buffer, rema
   try {
     const request = controller.signal.aborted
       ? Promise.reject(new Error('Recognition request aborted'))
-      : deps.provider({ photo, signal: controller.signal });
+      : deps.provider({ photo, signal: controller.signal, outputLocale });
     return await Promise.race([request, aborted]);
   } finally {
     clearTimeout(timer);
@@ -79,7 +80,8 @@ async function dispatch(deps: RecognitionWorkerDependencies, photo: Buffer, rema
 async function runDispatched(deps: RecognitionWorkerDependencies, operation: InternalOperation, photo: Buffer, now: () => Date) {
   let result: RecognitionProviderResult;
   try {
-    result = await dispatch(deps, photo, Math.max(1, Date.parse(operation.deadlineAt) - +now()));
+    const outputLocale = isLocale(operation.payload?.outputLocale) ? operation.payload.outputLocale : 'ru';
+    result = await dispatch(deps, photo, Math.max(1, Date.parse(operation.deadlineAt) - +now()), outputLocale);
   } catch (error) {
     const stopped = deps.signal?.aborted;
     const expired = Date.parse(operation.deadlineAt) <= +now();

@@ -1,8 +1,12 @@
+'use client';
+import { useI18n } from '@/i18n/provider';
+import { localeTag, type Locale } from '@/i18n/core';
+import { locationWeatherMessages } from '@/i18n/messages/location-weather';
 import { Card } from '@/components/ui/card';
 import type { WeatherSnapshot } from './schema';
 
-export function formatWeatherTime(time: string, timezone: string): string {
-  return new Intl.DateTimeFormat('ru-RU', {
+export function formatWeatherTime(time: string, timezone: string, locale: Locale = 'en'): string {
+  return new Intl.DateTimeFormat(localeTag(locale), {
     timeZone: timezone,
     day: '2-digit',
     month: 'short',
@@ -12,45 +16,45 @@ export function formatWeatherTime(time: string, timezone: string): string {
     hour12: false,
   }).format(new Date(time));
 }
-const number = (value: number) =>
-  new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 1 }).format(value);
-const range = ({ min, max }: { min: number; max: number }) => `${number(min)}…${number(max)} °C`;
-// Open-Meteo's WMO interpretation codes: https://open-meteo.com/en/docs
-const weatherDescriptions: Readonly<Record<number, string>> = {
-  0: 'Ясно',
-  1: 'Преимущественно ясно',
-  2: 'Переменная облачность',
-  3: 'Пасмурно',
-  45: 'Туман',
-  48: 'Туман с изморозью',
-  51: 'Морось',
-  53: 'Морось',
-  55: 'Морось',
-  56: 'Переохлаждённая морось',
-  57: 'Переохлаждённая морось',
-  61: 'Дождь',
-  63: 'Дождь',
-  65: 'Дождь',
-  66: 'Ледяной дождь',
-  67: 'Ледяной дождь',
-  71: 'Снег',
-  73: 'Снег',
-  75: 'Снег',
-  77: 'Снежные зёрна',
-  80: 'Ливень',
-  81: 'Ливень',
-  82: 'Ливень',
-  85: 'Снежный ливень',
-  86: 'Снежный ливень',
-  95: 'Гроза',
-  96: 'Гроза с градом',
-  97: 'Сильная гроза',
-  99: 'Гроза с градом',
-};
+const weatherKeys = {
+  0: 'clear',
+  1: 'mostlyClear',
+  2: 'partlyCloudy',
+  3: 'overcast',
+  45: 'fog',
+  48: 'rimeFog',
+  51: 'drizzle',
+  53: 'drizzle',
+  55: 'drizzle',
+  56: 'freezingDrizzle',
+  57: 'freezingDrizzle',
+  61: 'rain',
+  63: 'rain',
+  65: 'rain',
+  66: 'freezingRain',
+  67: 'freezingRain',
+  71: 'snow',
+  73: 'snow',
+  75: 'snow',
+  77: 'snowGrains',
+  80: 'showers',
+  81: 'showers',
+  82: 'showers',
+  85: 'snowShowers',
+  86: 'snowShowers',
+  95: 'thunderstorm',
+  96: 'hail',
+  97: 'heavyThunderstorm',
+  99: 'hail',
+} as const;
 
 export function WeatherPanel({ weather, now }: { weather: WeatherSnapshot; now: number }) {
+  const { locale, t } = useI18n(locationWeatherMessages);
+  const number = (value: number) =>
+    new Intl.NumberFormat(localeTag(locale), { maximumFractionDigits: 1 }).format(value);
+  const range = ({ min, max }: { min: number; max: number }) => `${number(min)}…${number(max)} °C`;
   const { current, summary, period } = weather;
-  const time = (value: string) => formatWeatherTime(value, period.timezone);
+  const time = (value: string) => formatWeatherTime(value, period.timezone, locale);
   const aged =
     weather.status === 'fresh' &&
     (!weather.fetchedAt ||
@@ -58,87 +62,93 @@ export function WeatherPanel({ weather, now }: { weather: WeatherSnapshot; now: 
       Date.parse(period.end) <= now);
   const stale = weather.status === 'stale' || aged;
   return (
-    <Card role="region" aria-label="Погода для выбранного места" className="space-y-5 p-5 sm:p-6">
+    <Card role="region" aria-label={t('weatherLabel')} className="space-y-5 p-5 sm:p-6">
       <div>
-        <h2 className="text-xl font-semibold">Погода сейчас и на ближайшие 3 часа</h2>
+        <h2 className="text-xl font-semibold">{t('heading')}</h2>
         <p className="mt-2 text-xs leading-5 text-stone-500">
           {time(period.start)} — {time(period.end)} · {period.timezone}
         </p>
       </div>
       {stale && (
         <p className="rounded-xl bg-amber-50 p-3 text-sm font-semibold text-amber-900">
-          Устаревшие данные
+          {t('stale')}
         </p>
       )}
       {aged && (
         <p role="status" className="text-sm leading-6 text-stone-600">
-          Прогноз устарел. Обновите погоду перед выходом.
+          {t('aged')}
         </p>
       )}
       {weather.status === 'unavailable' && (
-        <p className="font-semibold text-stone-600">Погода недоступна</p>
+        <p className="font-semibold text-stone-600">{t('unavailable')}</p>
       )}
       {weather.message && (
         <p role="status" className="text-sm leading-6 text-stone-600">
-          {weather.message}
+          {t(weather.status === 'stale' ? 'staleMessage' : 'unavailableMessage')}
         </p>
       )}
       {current && (
         <div className="rounded-2xl bg-[#efeee7] p-5">
-          <p className="text-xs text-stone-500">Текущие условия на {time(current.time)}</p>
+          <p className="text-xs text-stone-500">{t('currentAt', { time: time(current.time) })}</p>
           <p className="mt-3 text-4xl font-semibold">{number(current.temperature)} °C</p>
           <p className="mt-2 font-semibold">
-            {weatherDescriptions[current.weatherCode] ?? 'Погодные условия не уточнены'}
+            {t(weatherKeys[current.weatherCode as keyof typeof weatherKeys] ?? 'unknownWeather')}
           </p>
-          <p className="mt-2 text-sm">Ощущается как {number(current.apparentTemperature)} °C</p>
+          <p className="mt-2 text-sm">
+            {t('feelsLike', { temperature: number(current.apparentTemperature) })}
+          </p>
           <p className="mt-3 text-sm text-stone-600">
-            Ветер {number(current.windSpeed)} км/ч · порывы до {number(current.windGusts)} км/ч
+            {t('wind', { speed: number(current.windSpeed), gusts: number(current.windGusts) })}
           </p>
         </div>
       )}
       {summary && (
         <div className="space-y-4 text-sm">
           <div>
-            <h3 className="font-semibold">Ближайшие 3 часа</h3>
-            <p className="mt-2 text-xs leading-5 text-stone-500">
-              Ориентировочная оценка по почасовому прогнозу.
-            </p>
+            <h3 className="font-semibold">{t('upcoming')}</h3>
+            <p className="mt-2 text-xs leading-5 text-stone-500">{t('estimate')}</p>
             <dl className="mt-3 grid gap-3 sm:grid-cols-2">
               <div>
-                <dt className="text-stone-500">Температура</dt>
+                <dt className="text-stone-500">{t('temperature')}</dt>
                 <dd className="mt-1 font-semibold">{range(summary.temperature)}</dd>
               </div>
               <div>
-                <dt className="text-stone-500">Ощущается как</dt>
+                <dt className="text-stone-500">{t('apparentTemperature')}</dt>
                 <dd className="mt-1 font-semibold">{range(summary.apparentTemperature)}</dd>
               </div>
               <div>
-                <dt className="text-stone-500">Ветер до</dt>
-                <dd className="mt-1 font-semibold">{number(summary.windSpeedMax)} км/ч</dd>
+                <dt className="text-stone-500">{t('windUpTo')}</dt>
+                <dd className="mt-1 font-semibold">
+                  {number(summary.windSpeedMax)} {t('windUnit')}
+                </dd>
               </div>
             </dl>
           </div>
           <div
             role="group"
-            aria-label="Осадки и порывы по часовым интервалам"
+            aria-label={t('intervalsLabel')}
             className="border-t border-stone-200 pt-4"
           >
             <p className="text-xs leading-5 text-stone-500">
-              Осадки и порывы по часовым интервалам: {time(summary.precipitationPeriod.start)} —{' '}
-              {time(summary.precipitationPeriod.end)}
+              {t('intervals', {
+                start: time(summary.precipitationPeriod.start),
+                end: time(summary.precipitationPeriod.end),
+              })}
             </p>
-            <p className="mt-2">Порывы до {number(summary.windGustsMax)} км/ч</p>
+            <p className="mt-2">{t('gusts', { gusts: number(summary.windGustsMax) })}</p>
             <p className="mt-2">
-              {number(summary.precipitationMm)} мм · вероятность до{' '}
-              {number(summary.precipitationProbabilityMax)}%
+              {t('precipitation', {
+                amount: number(summary.precipitationMm),
+                probability: number(summary.precipitationProbabilityMax),
+              })}
             </p>
           </div>
         </div>
       )}
       <div className="border-t border-stone-200 pt-4 text-xs leading-5 text-stone-500">
-        {weather.fetchedAt && <p>Получено {time(weather.fetchedAt)}</p>}
+        {weather.fetchedAt && <p>{t('fetchedAt', { time: time(weather.fetchedAt) })}</p>}
         <p>
-          Данные:{' '}
+          {t('data')}{' '}
           <a
             className="underline underline-offset-2"
             href="https://open-meteo.com/"

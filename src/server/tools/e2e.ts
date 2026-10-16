@@ -10,6 +10,7 @@ import { createDatabase } from '../db/connection';
 import { migrateDatabase } from '../db/migrations';
 import { weatherCacheKey } from '../weather/forecast';
 import { makeForecast, testPlaces } from '../../../tests/fixtures/providers';
+import { isolatedProjectArguments } from './e2e-projects';
 
 async function stopWorker(worker: ChildProcess | undefined) {
   if (!worker || worker.exitCode !== null || worker.signalCode !== null) return;
@@ -20,8 +21,7 @@ async function stopWorker(worker: ChildProcess | undefined) {
   });
 }
 
-async function main() {
-  loadEnvConfig(process.cwd());
+async function runSuite(arguments_: readonly string[]) {
   const url = resolveIntegrationDatabaseUrl(process.env.INTEGRATION_DATABASE_URL, process.env.DATABASE_URL);
   if (!url) throw new Error('Local PostgreSQL required.');
   const schema = `wardrobe_e2e_${randomUUID().replaceAll('-', '')}`;
@@ -49,21 +49,37 @@ async function main() {
       worker!.once('error', reject);
     });
     const code = await new Promise<number>((resolveCode, reject) => {
-      const child = spawn(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test', ...process.argv.slice(2)], {
+      const child = spawn(process.execPath, [resolve('node_modules/@playwright/test/cli.js'), 'test', ...arguments_], {
         stdio: 'inherit', env: environment,
       });
-      child.once('error', reject);
-      child.once('exit', exitCode => resolveCode(exitCode ?? 1));
-      process.once('SIGINT', () => child.kill('SIGINT'));
-      process.once('SIGTERM', () => child.kill('SIGTERM'));
+      const interrupt = () => { child.kill('SIGINT'); };
+      const terminate = () => { child.kill('SIGTERM'); };
+      const removeSignalHandlers = () => {
+        process.removeListener('SIGINT', interrupt);
+        process.removeListener('SIGTERM', terminate);
+      };
+      child.once('error', error => { removeSignalHandlers(); reject(error); });
+      child.once('exit', exitCode => { removeSignalHandlers(); resolveCode(exitCode ?? 1); });
+      process.once('SIGINT', interrupt);
+      process.once('SIGTERM', terminate);
     });
-    process.exitCode = code;
+    return code;
   } finally {
     await stopWorker(worker);
     await database.destroy();
     await administrator.schema.dropSchemaIfExists(schema, true);
     await administrator.destroy();
     await rm(root, { recursive: true, force: true });
+  }
+}
+
+async function main() {
+  loadEnvConfig(process.cwd());
+  // Each project gets its own server, schema, worker and upload-rate window.
+  // This keeps the real production limits enabled as the browser suite grows.
+  for (const arguments_ of isolatedProjectArguments(process.argv.slice(2))) {
+    const code = await runSuite(arguments_);
+    if (code !== 0) { process.exitCode = code; return; }
   }
 }
 

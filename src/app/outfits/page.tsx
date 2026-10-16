@@ -9,10 +9,18 @@ import { getOutfitsService } from '@/server/outfits/runtime';
 import type { OutfitState } from '@/server/outfits/repository';
 import { parseServerEnvironment } from '@/server/config/environment';
 
-export const metadata: Metadata = { title: 'Образы на день' };
+import { getServerLocale } from '@/i18n/server';
+import { translate } from '@/i18n/core';
+import { commonMessages } from '@/i18n/messages/common';
+export async function generateMetadata(): Promise<Metadata> {
+  return {
+    title: { absolute: translate(await getServerLocale(), commonMessages, 'outfitsTitle') },
+  };
+}
 export const dynamic = 'force-dynamic';
 
 export default async function OutfitsPage() {
+  const locale = await getServerLocale();
   let initialLocation: LocationState | undefined;
   let initialWeather: WeatherSnapshot | undefined;
   let initialError: string | undefined;
@@ -23,7 +31,7 @@ export default async function OutfitsPage() {
     initialWeather = context.weather ?? undefined;
     initialResult = await (await getOutfitsService()).get();
   } catch (error) {
-    initialError = (await errorResponse(error).json()).error.message;
+    initialError = (await errorResponse(error, locale).json()).error.code;
   }
   return (
     <AppShell mode="personal" active="outfits">

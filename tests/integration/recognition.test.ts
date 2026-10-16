@@ -14,23 +14,47 @@ import { createRecognitionContext } from '../../src/server/recognition/context';
 import { createRecognitionService } from '../../src/server/recognition/service';
 import { createWardrobeRepository } from '../../src/server/wardrobe/repository';
 import { createWardrobeService } from '../../src/server/wardrobe/service';
-import { runRecognitionOnce, type RecognitionWorkerDependencies } from '../../src/worker/recognition-worker';
+import {
+  runRecognitionOnce,
+  type RecognitionWorkerDependencies,
+} from '../../src/worker/recognition-worker';
 import { createRecognitionHandlers } from '../../src/server/http/recognition-handlers';
 import { createPgOperationEventHub } from '../../src/server/operations/events';
 
 const url = resolveIntegrationDatabaseUrl(process.env.INTEGRATION_DATABASE_URL, undefined);
 const schema = `recognition_test_${randomUUID().replaceAll('-', '')}`;
-const fields = garmentFieldsSchema.parse({ name: 'Моя рубашка', type: 'shirt', bodyAreas: ['torso'], seasons: ['summer'] });
-const proposal = recognitionProposalSchema.parse({ kind: 'item', fields: { ...fields, name: 'AI-предложение', rainProtection: 'confirmed' }, warnings: ['Оценка по фотографии.'] });
-const providerResult = { proposal, usage: { inputTokens: 100, outputTokens: 80, cachedInputTokens: 0, cacheWriteTokens: 0, serviceTier: 'default' },
-  requestId: 'req_integration_fixture', responseId: 'resp_integration_fixture' };
+const fields = garmentFieldsSchema.parse({
+  name: 'Моя рубашка',
+  type: 'shirt',
+  bodyAreas: ['torso'],
+  seasons: ['summer'],
+});
+const proposal = recognitionProposalSchema.parse({
+  kind: 'item',
+  fields: { ...fields, name: 'AI-предложение', rainProtection: 'confirmed' },
+  warnings: ['Оценка по фотографии.'],
+});
+const providerResult = {
+  proposal,
+  usage: {
+    inputTokens: 100,
+    outputTokens: 80,
+    cachedInputTokens: 0,
+    cacheWriteTokens: 0,
+    serviceTier: 'default',
+  },
+  requestId: 'req_integration_fixture',
+  responseId: 'resp_integration_fixture',
+};
 
 // Real transactions, private normalized photographs and worker publication; no network AI calls.
 describe.skipIf(!url)('recognition service and durable draft publication', () => {
   const administrator = url ? createDatabase(url) : null;
   const database = url ? createDatabase(url, schema) : null;
   const operations = database ? createOperationsRepository(database) : null;
-  const recognition = database ? createRecognitionService({ database, repository: operations!, enabled: true }) : null;
+  const recognition = database
+    ? createRecognitionService({ database, repository: operations!, enabled: true })
+    : null;
   const wardrobeRepository = database ? createWardrobeRepository(database) : null;
   let root: string;
   let wardrobe: ReturnType<typeof createWardrobeService>;
@@ -43,7 +67,9 @@ describe.skipIf(!url)('recognition service and durable draft publication', () =>
     await migrateDatabase(database!, schema);
     wardrobe = createWardrobeService(wardrobeRepository!, root);
     context = createRecognitionContext(database!, root);
-    photo = await sharp({ create: { width: 120, height: 160, channels: 3, background: '#527861' } }).jpeg().toBuffer();
+    photo = await sharp({ create: { width: 120, height: 160, channels: 3, background: '#527861' } })
+      .jpeg()
+      .toBuffer();
   });
   afterAll(async () => {
     await database!.destroy();
@@ -51,7 +77,9 @@ describe.skipIf(!url)('recognition service and durable draft publication', () =>
     await administrator!.destroy();
     if (root) await rm(root, { recursive: true, force: true });
   });
-  function dependencies(provider: RecognitionWorkerDependencies['provider'] = async () => providerResult) {
+  function dependencies(
+    provider: RecognitionWorkerDependencies['provider'] = async () => providerResult,
+  ) {
     return { workerId: randomUUID(), repository: operations!, context, provider };
   }
   async function countOperations() {
@@ -63,7 +91,10 @@ describe.skipIf(!url)('recognition service and durable draft publication', () =>
     const key = randomUUID();
     const before = await wardrobe.list();
     const operation = await recognition!.start(draft.id, key);
-    expect(await recognition!.start(draft.id, key)).toEqual(operation);
+    expect(await recognition!.start(draft.id, key, 'ru')).toEqual(operation);
+    expect((await operations!.getInternal(operation.id))?.payload).toMatchObject({
+      outputLocale: 'en',
+    });
     expect((await recognition!.start(draft.id, randomUUID())).id).toBe(operation.id);
     expect(await database!('ai_operations').where({ target_id: draft.id })).toHaveLength(1);
     let calls = 0;
@@ -75,23 +106,46 @@ describe.skipIf(!url)('recognition service and durable draft publication', () =>
     expect(await runRecognitionOnce(deps)).toBe(true);
     expect(await runRecognitionOnce(deps)).toBe(false);
     expect(calls).toBe(1);
-    expect(await operations!.get(operation.id)).toMatchObject({ status: 'succeeded', settlementState: 'confirmed' });
-    expect(await wardrobe.getDraft(draft.id)).toMatchObject({ fields: null, garmentId: null, recognitionOperationId: operation.id,
-      aiProposal: { kind: 'item', fields: { name: 'AI-предложение', rainProtection: 'unknown', windProtection: 'unknown' } } });
+    expect(await operations!.get(operation.id)).toMatchObject({
+      status: 'succeeded',
+      settlementState: 'confirmed',
+    });
+    expect(await wardrobe.getDraft(draft.id)).toMatchObject({
+      fields: null,
+      garmentId: null,
+      recognitionOperationId: operation.id,
+      aiProposal: {
+        kind: 'item',
+        outputLocale: 'en',
+        fields: { name: 'AI-предложение', rainProtection: 'unknown', windProtection: 'unknown' },
+      },
+    });
     expect(await wardrobe.list()).toEqual(before);
     const saved = await wardrobe.saveDraft(draft.id, fields);
     expect(saved.fields).toEqual(fields);
-    expect((await database!('ai_cost_ledger').where({ operation_id: operation.id }).first()).usage).toMatchObject({ inputTokens: 100, outputTokens: 80 });
+    expect(
+      (await database!('ai_cost_ledger').where({ operation_id: operation.id }).first()).usage,
+    ).toMatchObject({ inputTokens: 100, outputTokens: 80 });
   });
 
   it('rejects disabled, absent, expired and already saved drafts without leaving a charge', async () => {
     const before = await countOperations();
-    const disabled = createRecognitionService({ database: database!, repository: operations!, enabled: false });
+    const disabled = createRecognitionService({
+      database: database!,
+      repository: operations!,
+      enabled: false,
+    });
     await expect(disabled.start(randomUUID(), randomUUID())).rejects.toMatchObject({ status: 503 });
-    await expect(recognition!.start(randomUUID(), randomUUID())).rejects.toMatchObject({ status: 404 });
+    await expect(recognition!.start(randomUUID(), randomUUID())).rejects.toMatchObject({
+      status: 404,
+    });
     const expired = await wardrobe.upload(photo);
-    await database!('garment_drafts').where({ id: expired.id }).update({ expires_at: new Date(Date.now() - 1_000) });
-    await expect(recognition!.start(expired.id, randomUUID())).rejects.toMatchObject({ status: 409 });
+    await database!('garment_drafts')
+      .where({ id: expired.id })
+      .update({ expires_at: new Date(Date.now() - 1_000) });
+    await expect(recognition!.start(expired.id, randomUUID())).rejects.toMatchObject({
+      status: 409,
+    });
     const saved = await wardrobe.upload(photo);
     await wardrobe.saveDraft(saved.id, fields);
     await expect(recognition!.start(saved.id, randomUUID())).rejects.toMatchObject({ status: 409 });
@@ -104,18 +158,42 @@ describe.skipIf(!url)('recognition service and durable draft publication', () =>
       const operation = await recognition!.start(draft.id, randomUUID());
       let dispatched!: () => void;
       let release!: () => void;
-      const entered = new Promise<void>(resolve => { dispatched = resolve; });
-      const gate = new Promise<void>(resolve => { release = resolve; });
-      const running = runRecognitionOnce(dependencies(async () => { dispatched(); await gate; return providerResult; }));
+      const entered = new Promise<void>((resolve) => {
+        dispatched = resolve;
+      });
+      const gate = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const running = runRecognitionOnce(
+        dependencies(async () => {
+          dispatched();
+          await gate;
+          return providerResult;
+        }),
+      );
       await entered;
       const saved = action === 'save' ? await wardrobe.saveDraft(draft.id, fields) : null;
       if (action === 'cancel') await wardrobe.cancelDraft(draft.id);
       release();
       expect(await running).toBe(true);
-      expect(await operations!.get(operation.id)).toMatchObject({ status: 'failed', errorCode: 'TARGET_UNAVAILABLE', settlementState: 'confirmed' });
-      expect((await database!('garment_drafts').where({ id: draft.id }).first()).ai_proposal).toBeNull();
-      if (saved) expect((await wardrobe.list()).garments.find(item => item.id === saved.id)?.fields).toEqual(fields);
-      expect(await context.isCurrent({ ...await operations!.getInternal(operation.id), payload: { draftId: draft.id, photoId: draft.photoId } })).toBe(false);
+      expect(await operations!.get(operation.id)).toMatchObject({
+        status: 'failed',
+        errorCode: 'TARGET_UNAVAILABLE',
+        settlementState: 'confirmed',
+      });
+      expect(
+        (await database!('garment_drafts').where({ id: draft.id }).first()).ai_proposal,
+      ).toBeNull();
+      if (saved)
+        expect(
+          (await wardrobe.list()).garments.find((item) => item.id === saved.id)?.fields,
+        ).toEqual(fields);
+      expect(
+        await context.isCurrent({
+          ...(await operations!.getInternal(operation.id)),
+          payload: { draftId: draft.id, photoId: draft.photoId },
+        }),
+      ).toBe(false);
     });
   }
 
@@ -124,26 +202,46 @@ describe.skipIf(!url)('recognition service and durable draft publication', () =>
     const operation = await recognition!.start(draft.id, randomUUID());
     await wardrobe.cancelDraft(draft.id);
     let called = false;
-    expect(await runRecognitionOnce(dependencies(async () => { called = true; return providerResult; }))).toBe(true);
+    expect(
+      await runRecognitionOnce(
+        dependencies(async () => {
+          called = true;
+          return providerResult;
+        }),
+      ),
+    ).toBe(true);
     expect(called).toBe(false);
-    expect(await operations!.get(operation.id)).toMatchObject({ status: 'interrupted', settlementState: 'released' });
+    expect(await operations!.get(operation.id)).toMatchObject({
+      status: 'interrupted',
+      settlementState: 'released',
+    });
   });
 
   it('serves committed SSE snapshots, receives real PostgreSQL notifications and reconnects to a terminal result', async () => {
     const hub = createPgOperationEventHub({ connectionString: url! });
-    const handlers = createRecognitionHandlers(async () => ({ repository: operations!, recognition: recognition!, eventHub: hub }));
+    const handlers = createRecognitionHandlers(async () => ({
+      repository: operations!,
+      recognition: recognition!,
+      eventHub: hub,
+    }));
     const draft = await wardrobe.upload(photo);
     const origin = 'http://127.0.0.1:3100';
     const key = randomUUID();
-    const admitted = await handlers.start(new Request(`${origin}/api/garment-drafts/${draft.id}/recognition`, {
-      method: 'POST', headers: { host: '127.0.0.1:3100', origin, 'Idempotency-Key': key },
-    }), draft.id);
+    const admitted = await handlers.start(
+      new Request(`${origin}/api/garment-drafts/${draft.id}/recognition`, {
+        method: 'POST',
+        headers: { host: '127.0.0.1:3100', origin, 'Idempotency-Key': key },
+      }),
+      draft.id,
+    );
     expect(admitted.status).toBe(202);
     const operation = (await admitted.json()).data;
     const controller = new AbortController();
-    const streamRequest = () => new Request(`${origin}/api/operation-events?ids=${operation.id}`, {
-      headers: { host: '127.0.0.1:3100' }, signal: controller.signal,
-    });
+    const streamRequest = () =>
+      new Request(`${origin}/api/operation-events?ids=${operation.id}`, {
+        headers: { host: '127.0.0.1:3100' },
+        signal: controller.signal,
+      });
     try {
       const response = await handlers.events(streamRequest());
       expect(response.headers.get('content-type')).toContain('text/event-stream');
@@ -161,8 +259,19 @@ describe.skipIf(!url)('recognition service and durable draft publication', () =>
       expect(await reader.read()).toMatchObject({ done: true });
       const reconnected = await handlers.events(streamRequest());
       expect(await reconnected.text()).toContain('"status":"succeeded"');
-      const retrieved = await handlers.get(new Request(`${origin}/api/operations/${operation.id}`, { headers: { host: '127.0.0.1:3100' } }), operation.id);
-      expect((await retrieved.json()).data).toMatchObject({ id: operation.id, status: 'succeeded' });
-    } finally { controller.abort(); await hub.dispose(); }
+      const retrieved = await handlers.get(
+        new Request(`${origin}/api/operations/${operation.id}`, {
+          headers: { host: '127.0.0.1:3100' },
+        }),
+        operation.id,
+      );
+      expect((await retrieved.json()).data).toMatchObject({
+        id: operation.id,
+        status: 'succeeded',
+      });
+    } finally {
+      controller.abort();
+      await hub.dispose();
+    }
   });
 });

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { z } from 'zod';
+import type { Locale } from '../../i18n/core';
 import type { Place } from '../../features/location/schema';
 import { preflightWardrobe } from '../../features/outfits/validation';
 import type { WeatherSnapshot } from '../../features/weather/schema';
@@ -41,7 +42,7 @@ export function createOutfitsService(options: Options) {
     const current = await currentWeather();
     return repository.read(current.weather, clock());
   }
-  async function start(idempotencyKey: string) {
+  async function start(idempotencyKey: string, outputLocale: Locale = 'en') {
     z.uuid().parse(idempotencyKey);
     const existing = await repository.findIdempotencyKey(idempotencyKey);
     if (existing) {
@@ -83,6 +84,7 @@ export function createOutfitsService(options: Options) {
         'INCOMPLETE_WARDROBE',
         409,
         `Для полного образа не хватает: ${preflight.missing.join(', ')}.`,
+        { missingRoles: preflight.missingRoles, warm: preflight.warm },
       );
     const snapshot: OutfitInputSnapshot = {
       wardrobeVersion: captured.wardrobeVersion,
@@ -102,7 +104,7 @@ export function createOutfitsService(options: Options) {
         targetId: OUTFITS_TARGET_ID,
         idempotencyKey,
         payloadHash,
-        payload: { snapshot, expectedRevision: captured.revision },
+        payload: { snapshot, expectedRevision: captured.revision, outputLocale },
         model: pricing.model,
         pricingRevision: pricing.revision,
         reserveMicroUsd: pricing.reserveMicroUsd,
@@ -119,15 +121,18 @@ export function createOutfitsService(options: Options) {
     if (!current.weather) throw new ApiError('LOCATION_REQUIRED', 409, 'Сначала выберите место.');
     return repository.alternatives(outfitId, garmentId, current.weather, clock());
   }
-  async function replace(input: {
-    outfitId: string;
-    garmentId: string;
-    replacementId: string;
-    expectedRevision: number;
-  }) {
+  async function replace(
+    input: {
+      outfitId: string;
+      garmentId: string;
+      replacementId: string;
+      expectedRevision: number;
+    },
+    outputLocale: Locale = 'en',
+  ) {
     const current = await currentWeather();
     if (!current.weather) throw new ApiError('LOCATION_REQUIRED', 409, 'Сначала выберите место.');
-    return repository.replace(input, current.weather, clock());
+    return repository.replace(input, current.weather, clock(), outputLocale);
   }
   return { get, start, alternatives, replace };
 }

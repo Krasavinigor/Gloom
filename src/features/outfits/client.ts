@@ -8,6 +8,7 @@ export class OutfitApiError extends Error {
     public readonly code: string,
     public readonly status: number,
     message: string,
+    public readonly details?: unknown,
   ) {
     super(message);
     this.name = 'OutfitApiError';
@@ -30,6 +31,7 @@ async function request<T>(url: string, options?: RequestInit): Promise<T> {
       payload?.error?.code ?? 'REQUEST_FAILED',
       response.status,
       payload?.error?.message ?? 'Не удалось выполнить действие. Попробуйте позже.',
+      payload?.error?.details,
     );
   }
   return payload.data as T;

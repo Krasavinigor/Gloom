@@ -1,4 +1,5 @@
 import type { Knex } from 'knex';
+import type { Locale } from '../../i18n/core';
 import { z } from 'zod';
 import { placeSchema, searchQuerySchema, type Place } from '../../features/location/schema';
 import { ApiError } from '../http/api-error';
@@ -24,20 +25,20 @@ const cacheRowSchema = z.object({
   expires_at: z.date(),
 });
 
-function cacheKey(query: string): string {
-  return `ru:8:${query.toLocaleLowerCase('ru')}`;
+function cacheKey(query: string, locale: Locale): string {
+  return `${locale}:8:${query.toLocaleLowerCase(locale)}`;
 }
 
-async function readCache(db: Knex, query: string, now: number): Promise<Place[] | null> {
-  const raw = await db('geocoding_cache').where({ cache_key: cacheKey(query) }).first();
+async function readCache(db: Knex, query: string, now: number, locale: Locale): Promise<Place[] | null> {
+  const raw = await db('geocoding_cache').where({ cache_key: cacheKey(query, locale) }).first();
   const cached = cacheRowSchema.safeParse(raw);
   if (!cached.success || cached.data.expires_at.getTime() <= now) return null;
   return cached.data.payload.places;
 }
 
-async function fetchPlaces(query: string, fetcher: typeof fetch): Promise<Place[]> {
+async function fetchPlaces(query: string, fetcher: typeof fetch, locale: Locale): Promise<Place[]> {
   const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
-  url.search = new URLSearchParams({ name: query, count: '8', language: 'ru', format: 'json' }).toString();
+  url.search = new URLSearchParams({ name: query, count: '8', language: locale, format: 'json' }).toString();
   try {
     const response = await fetcher(url, {
       signal: AbortSignal.timeout(5_000), redirect: 'error', cache: 'no-store',
@@ -59,21 +60,21 @@ export function createGeocodingService(
   { fetcher = fetch, clock = Date.now }: { fetcher?: typeof fetch; clock?: () => number } = {},
 ) {
   return {
-    async search(input: string): Promise<Place[]> {
+    async search(input: string, locale: Locale = 'en'): Promise<Place[]> {
       const query = searchQuerySchema.parse(input);
-      const cached = await readCache(db, query, clock());
+      const cached = await readCache(db, query, clock(), locale);
       if (cached) return cached;
-      const places = await fetchPlaces(query, fetcher);
+      const places = await fetchPlaces(query, fetcher, locale);
       const fetchedAt = new Date(clock());
       await db('geocoding_cache').insert({
-        cache_key: cacheKey(query), payload: { places }, fetched_at: fetchedAt,
+        cache_key: cacheKey(query, locale), payload: { places }, fetched_at: fetchedAt,
         expires_at: new Date(fetchedAt.getTime() + CACHE_DURATION_MS),
       }).onConflict('cache_key').merge();
       return places;
     },
-    async findCachedPlace(input: string, id: string): Promise<Place | null> {
+    async findCachedPlace(input: string, id: string, locale: Locale = 'en'): Promise<Place | null> {
       const query = searchQuerySchema.parse(input);
-      const places = await readCache(db, query, clock());
+      const places = await readCache(db, query, clock(), locale);
       return places?.find((place) => place.id === id) ?? null;
     },
   };

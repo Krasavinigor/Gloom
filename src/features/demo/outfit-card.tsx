@@ -1,18 +1,23 @@
+'use client';
+
+import { useI18n } from '@/i18n/provider';
+import { demoMessages } from '@/i18n/messages/demo';
 import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { getDemoItem, type DemoOutfit } from './fixtures';
 export function OutfitCard({ outfit, index }: { outfit: DemoOutfit; index: number }) {
+  const { locale, t } = useI18n(demoMessages);
   return (
     <Card className="overflow-hidden">
       <div className="flex items-center justify-between border-b border-stone-200 px-5 py-4">
         <span className="text-xs tracking-[0.16em] text-stone-500 uppercase">
-          Образ {String(index + 1).padStart(2, '0')}
+          {t('outfitNumber', { number: String(index + 1).padStart(2, '0') })}
         </span>
-        <span className="text-xs text-emerald-800">Готовый пример</span>
+        <span className="text-xs text-emerald-800">{t('readyExample')}</span>
       </div>
       <div className="grid grid-cols-3 gap-1 bg-[#efeee7] px-3 py-6">
         {outfit.itemIds.map((id) => {
-          const item = getDemoItem(id);
+          const item = getDemoItem(id, locale);
           return (
             <figure key={id} className="min-w-0">
               <Image

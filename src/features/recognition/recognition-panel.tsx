@@ -1,8 +1,13 @@
 'use client';
+import { useI18n } from '@/i18n/provider';
+import { getErrorMessage } from '@/i18n/errors';
+import { recognitionMessages } from '@/i18n/messages/recognition';
+import { garmentLabel } from '@/i18n/messages/wardrobe';
+import { localeTag } from '@/i18n/core';
 import { useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { garmentTypeCatalog, type Draft, type GarmentFields } from '@/features/wardrobe/schema';
+import { type Draft, type GarmentFields } from '@/features/wardrobe/schema';
 import type { OperationSnapshot } from '@/server/operations/schema';
 import type { RecognitionProposal } from './schema';
 import { recognitionClient } from './client';
@@ -10,7 +15,6 @@ import { useOperationEvents } from './use-operation-events';
 
 const budgetKey = ['ai-budget'] as const;
 const isActive = (operation: OperationSnapshot) => ['queued', 'running'].includes(operation.status);
-const money = (microUsd: number) => `$${(microUsd / 1_000_000).toFixed(4)}`;
 
 export function RecognitionPanel({
   draft,
@@ -25,6 +29,13 @@ export function RecognitionPanel({
   onApply: (fields: GarmentFields) => void;
   onComplete: () => unknown;
 }) {
+  const { locale, t } = useI18n(recognitionMessages);
+  const money = (microUsd: number) =>
+    new Intl.NumberFormat(localeTag(locale), {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 4,
+    }).format(microUsd / 1_000_000);
   const queryClient = useQueryClient();
   const [operation, setOperation] = useState<OperationSnapshot | null>(null);
   const idempotencyKey = useRef<string | null>(null);
@@ -88,64 +99,62 @@ export function RecognitionPanel({
   const proposal = active ? null : draft.aiProposal;
   return (
     <section
-      aria-label="Распознавание одежды"
+      aria-label={t('region')}
       className="mb-6 space-y-3 rounded-xl border border-emerald-100 bg-emerald-50/50 p-4"
     >
-      <h3 className="font-semibold">Описание по фотографии</h3>
+      <h3 className="font-semibold">{t('heading')}</h3>
       {aiEnabled ? (
-        <p className="text-xs leading-5 text-stone-600">
-          По кнопке фотография будет отправлена в OpenAI. Проверьте предложенные свойства перед
-          сохранением. Можно заполнить всё вручную.
-        </p>
+        <p className="text-xs leading-5 text-stone-600">{t('consent')}</p>
       ) : (
-        <p className="text-sm leading-6 text-stone-500">
-          AI сейчас отключён. Опишите вещь вручную — все поля доступны ниже.
-        </p>
+        <p className="text-sm leading-6 text-stone-500">{t('disabled')}</p>
       )}
       {budget.data && (
         <p className="text-xs leading-5 text-stone-500">
-          Бюджет {budget.data.month} (UTC): учтено {money(budget.data.confirmedCostMicroUsd)} из{' '}
-          {money(budget.data.limitMicroUsd)}. В резерве{' '}
-          {money(budget.data.activeReservedMicroUsd + budget.data.unknownReservedMicroUsd)}.
+          {t('budget', {
+            month: budget.data.month,
+            spent: money(budget.data.confirmedCostMicroUsd),
+            limit: money(budget.data.limitMicroUsd),
+            reserved: money(
+              budget.data.activeReservedMicroUsd + budget.data.unknownReservedMicroUsd,
+            ),
+          })}
         </p>
       )}
       {budget.data?.warning && !exhausted && (
         <p role="status" className="text-sm text-amber-900">
-          Использовано или зарезервировано не менее $8 месячного бюджета AI.
+          {t('warning')}
         </p>
       )}
       {exhausted && (
         <p role="status" className="text-sm text-amber-900">
-          Бюджет AI исчерпан или зарезервирован. Ручное описание доступно.
+          {t('exhausted')}
         </p>
       )}
       {budget.error && (
         <div role="alert" className="space-y-2 text-sm text-red-800">
-          <p>Не удалось проверить бюджет AI. Пока можно заполнить описание вручную.</p>
+          <p>{t('budgetError')}</p>
           <Button
             variant="outline"
             size="sm"
             disabled={budget.isFetching}
             onClick={() => budget.refetch()}
           >
-            Проверить бюджет
+            {t('checkBudget')}
           </Button>
         </div>
       )}
       {start.error && (
         <p role="alert" className="text-sm text-red-800">
-          {start.error.message}
+          {getErrorMessage(locale, start.error)}
         </p>
       )}
       {active && (
         <p role="status" className="text-sm text-emerald-900">
-          {operation?.status === 'running' ? 'Распознаём одежду…' : 'Ожидаем распознавание…'}
+          {operation?.status === 'running' ? t('running') : t('queued')}
         </p>
       )}
       {active && ['connecting', 'reconnecting'].includes(connection) && (
-        <p className="text-xs leading-5 text-stone-500">
-          Восстанавливаем связь со статусом. Новое распознавание не запускается.
-        </p>
+        <p className="text-xs leading-5 text-stone-500">{t('reconnecting')}</p>
       )}
       {operation && !isActive(operation) && <OperationResult operation={operation} />}
       {proposal && (
@@ -169,47 +178,41 @@ export function RecognitionPanel({
           onClick={recognize}
         >
           {start.isPending
-            ? 'Запускаем…'
+            ? t('starting')
             : active
-              ? 'Распознавание выполняется'
+              ? t('active')
               : start.error
-                ? 'Проверить запуск распознавания'
+                ? t('checkStart')
                 : proposal || operation
-                  ? 'Распознать заново'
-                  : 'Распознать одежду'}
+                  ? t('again')
+                  : t('recognize')}
         </Button>
       )}
       {aiEnabled && proposal?.kind === 'item' && (
-        <p className="text-xs leading-5 text-stone-500">
-          Повторное распознавание — новый платный запрос. Исправление полей бесплатно.
-        </p>
+        <p className="text-xs leading-5 text-stone-500">{t('paidRetry')}</p>
       )}
     </section>
   );
 }
 
 function OperationResult({ operation }: { operation: OperationSnapshot }) {
+  const { t } = useI18n(recognitionMessages);
   if (operation.status === 'succeeded')
     return (
       <p role="status" className="text-sm text-emerald-900">
-        Распознавание завершено. Проверьте описание.
+        {t('succeeded')}
       </p>
     );
   const message =
     operation.status === 'timed_out'
-      ? 'Время ожидания истекло.'
+      ? t('timedOut')
       : operation.status === 'interrupted'
-        ? 'Распознавание прервалось.'
-        : 'Не удалось распознать вещь. Попробуйте другое фото или заполните описание вручную.';
+        ? t('interrupted')
+        : t('failed');
   return (
     <div role="status" className="space-y-2 text-sm text-amber-900">
       <p>{message}</p>
-      {operation.settlementState === 'unknown' && (
-        <p>
-          Результат оплаты пока неизвестен, резерв бюджета сохранён. Автоматического повтора нет;
-          ручное описание доступно.
-        </p>
-      )}
+      {operation.settlementState === 'unknown' && <p>{t('unknownPayment')}</p>}
     </div>
   );
 }
@@ -225,47 +228,48 @@ function Proposal({
   applied: boolean;
   onApply: (fields: GarmentFields) => void;
 }) {
+  const { locale, t } = useI18n(recognitionMessages);
   return (
     <div className="space-y-3 border-t border-emerald-200 pt-3">
       {proposal.kind === 'item' ? (
         <>
           <p className="font-medium">{proposal.fields.name}</p>
           <p className="text-sm text-stone-600">
-            {garmentTypeCatalog.find((entry) => entry.value === proposal.fields.type)?.label}
+            {garmentLabel(locale, proposal.fields.type)}
             {proposal.fields.color && ` · ${proposal.fields.color}`}
             {proposal.fields.pattern && ` · ${proposal.fields.pattern}`}
           </p>
           {proposal.fields.temperature && (
             <p className="text-sm text-stone-600">
-              Примерно {proposal.fields.temperature.min}…{proposal.fields.temperature.max} °C. Это
-              оценка, а не гарантия комфорта.
+              {t('estimate', {
+                min: new Intl.NumberFormat(localeTag(locale)).format(
+                  proposal.fields.temperature.min,
+                ),
+                max: new Intl.NumberFormat(localeTag(locale)).format(
+                  proposal.fields.temperature.max,
+                ),
+              })}
             </p>
           )}
-          <p className="text-xs leading-5 text-stone-500">
-            Защита от дождя и ветра неизвестна. Подтвердите её по свойствам вещи.
-          </p>
-          <p className="text-xs leading-5 text-stone-500">
-            Применение заменит текущие поля формы. Затем описание можно исправить перед сохранением.
-          </p>
+          <p className="text-xs leading-5 text-stone-500">{t('protection')}</p>
+          <p className="text-xs leading-5 text-stone-500">{t('applyHelp')}</p>
           <Button
             type="button"
             size="sm"
             disabled={busy || applied}
             onClick={() => onApply(proposal.fields!)}
           >
-            Применить AI-описание к форме
+            {t('apply')}
           </Button>
           {applied && (
             <p role="status" className="text-sm text-emerald-900">
-              Описание перенесено в форму. Проверьте и сохраните вещь.
+              {t('applied')}
             </p>
           )}
         </>
       ) : (
         <p className="text-sm text-amber-900">
-          {proposal.kind === 'multiple_items'
-            ? 'На фото несколько вещей. Загрузите каждый предмет отдельно или заполните описание вручную.'
-            : 'На фото не удалось найти предмет одежды. Выберите другое фото или заполните описание вручную.'}
+          {proposal.kind === 'multiple_items' ? t('multiple') : t('notFound')}
         </p>
       )}
       {!!proposal.warnings.length && (

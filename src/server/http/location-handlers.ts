@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { localeFromRequest } from '../../i18n/core';
 import { searchQuerySchema } from '../../features/location/schema';
 import type { LocationWeatherService } from '../location/service';
 import { readJson } from './body';
@@ -12,7 +13,7 @@ async function handle(request: Request, mutation: boolean, action: () => Promise
   } catch (error) {
     if (!request.body?.locked) void request.body?.cancel().catch(() => undefined);
     return errorResponse(error instanceof z.ZodError
-      ? new ApiError('invalid_location', 400, 'Проверьте параметры места и повторите действие.') : error);
+      ? new ApiError('invalid_location', 400, 'Проверьте параметры места и повторите действие.') : error, localeFromRequest(request));
   }
 }
 
@@ -20,8 +21,10 @@ export function createLocationHandlers(service: () => Promise<LocationWeatherSer
   return {
     get: (request: Request) => handle(request, false, async () => (await service()).get()),
     search: (request: Request) => handle(request, false, async () => {
-      const query = searchQuerySchema.parse(new URL(request.url).searchParams.get('query'));
-      return (await service()).search(query);
+      const params = new URL(request.url).searchParams;
+      const query = searchQuerySchema.parse(params.get('query'));
+      const locale = params.has('locale') ? z.enum(['en', 'ru']).parse(params.get('locale')) : localeFromRequest(request);
+      return (await service()).search(query, locale);
     }),
     select: (request: Request) => handle(request, true, async () => {
       const input = await readJson(request);

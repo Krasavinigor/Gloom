@@ -236,7 +236,7 @@ function unmatchedRoles(
 export function preflightWardrobe(
   garments: readonly Garment[],
   weather: WeatherSnapshot,
-): { complete: boolean; missing: string[] } {
+): { complete: boolean; missing: string[]; missingRoles?: OutfitRole[]; warm?: boolean } {
   if (!weather.summary || weather.status === 'unavailable')
     return { complete: false, missing: ['Нет полного погодного прогноза.'] };
   const minimum = weather.summary.apparentTemperature.min;
@@ -252,7 +252,11 @@ export function preflightWardrobe(
     (role) =>
       `Не хватает: ${roleLabels[role]}${minimum <= 0 && ['outer', 'footwear'].includes(role) ? ' (тёплая)' : ''}.`,
   );
-  return { complete: missing.length === 0, missing };
+  return {
+    complete: missing.length === 0,
+    missing,
+    ...(missing.length ? { missingRoles: unavailable, warm: minimum <= 0 } : {}),
+  };
 }
 
 export function replacementAlternatives(

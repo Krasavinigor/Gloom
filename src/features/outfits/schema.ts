@@ -10,6 +10,10 @@ export const outfitRoles = [
   'headwear',
 ] as const;
 export const outfitRoleSchema = z.enum(outfitRoles);
+export const missingWardrobeDetailsSchema = z.strictObject({
+  missingRoles: z.array(outfitRoleSchema).min(1).max(7),
+  warm: z.boolean(),
+});
 export const outfitItemSchema = z.strictObject({
   garmentId: z.string().min(1).max(100),
   role: outfitRoleSchema,
@@ -32,7 +36,7 @@ export type OutfitWarning = Readonly<{
   garmentId?: string;
 }>;
 export type ValidatedOutfit = OutfitSuggestion &
-  Readonly<{ warnings: OutfitWarning[]; conditional: boolean }>;
+  Readonly<{ warnings: OutfitWarning[]; conditional: boolean; explanationSource?: 'replacement' }>;
 export type OutfitValidation =
   | Readonly<{ valid: true; outfit: ValidatedOutfit }>
   | Readonly<{ valid: false; reasons: string[] }>;
