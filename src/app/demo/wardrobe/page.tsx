@@ -4,7 +4,9 @@ import { AppShell } from '@/components/app-shell';
 import { demoItems } from '@/features/demo/fixtures';
 import { GarmentCard } from '@/features/demo/garment-card';
 import { Button } from '@/components/ui/button';
+
 export const metadata: Metadata = { title: 'Демогардероб' };
+
 export default function DemoWardrobePage() {
   return (
     <AppShell mode="demo" active="wardrobe">

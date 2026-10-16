@@ -8,8 +8,10 @@ import { errorResponse } from '@/server/http/errors';
 import { getOutfitsService } from '@/server/outfits/runtime';
 import type { OutfitState } from '@/server/outfits/repository';
 import { parseServerEnvironment } from '@/server/config/environment';
+
 export const metadata: Metadata = { title: 'Образы на день' };
 export const dynamic = 'force-dynamic';
+
 export default async function OutfitsPage() {
   let initialLocation: LocationState | undefined;
   let initialWeather: WeatherSnapshot | undefined;

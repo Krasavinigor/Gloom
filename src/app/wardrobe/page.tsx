@@ -5,8 +5,10 @@ import type { WardrobeSnapshot } from '@/features/wardrobe/schema';
 import { getWardrobeService } from '@/server/wardrobe/runtime';
 import { errorResponse } from '@/server/http/errors';
 import { parseServerEnvironment } from '@/server/config/environment';
+
 export const metadata: Metadata = { title: 'Мой гардероб' };
 export const dynamic = 'force-dynamic';
+
 export default async function WardrobePage({
   searchParams,
 }: {
