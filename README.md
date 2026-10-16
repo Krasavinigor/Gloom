@@ -1,6 +1,6 @@
 # Gloom
 
-### Ваш гардероб. Ваша погода. Ваш день.
+### Your wardrobe. Your weather. Your day.
 
 ![Next.js 16](https://img.shields.io/badge/Next.js-16-111827?style=flat-square&logo=nextdotjs&logoColor=white)
 ![React 19](https://img.shields.io/badge/React-19-149ECA?style=flat-square&logo=react&logoColor=white)
@@ -8,50 +8,50 @@
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white)
 ![OpenAI Responses API](https://img.shields.io/badge/OpenAI-Responses_API-166451?style=flat-square)
 
-Gloom помогает выбрать одежду из собственного гардероба под погоду в выбранном городе. Загрузите фотографию вещи, проверьте предложенное AI-описание и получите от одного до трёх образов на ближайшие три часа.
+Gloom helps you choose clothes from your own wardrobe for the weather in a selected city. Upload a photo of an item, review the AI-generated description, and get one to three outfits for the next three hours.
 
-Pet project с фокусом на **frontend engineering и интеграцию GenAI**: SSR, клиентский кеш, мультимодальная LLM, асинхронные задачи и обновления интерфейса через SSE. Приложение запускается локально, без регистрации.
+A pet project focused on **frontend engineering and GenAI integration**: SSR, client-side caching, a multimodal LLM, asynchronous jobs, and SSE-driven UI updates. The app runs locally and requires no sign-in.
 
-![Gloom: погодная сводка и два образа из демонстрационного гардероба](docs/assets/gloom-demo.png)
+![Gloom: a weather summary and two outfits from the demo wardrobe](docs/assets/gloom-demo.png)
 
-*Реальный скриншот деморежима. Вещи, погода и образы здесь подготовлены заранее; внешние API не вызываются.*
+_An actual screenshot of the demo mode. The clothes, weather, and outfits are prepared in advance; no external APIs are called._
 
-## Возможности
+## Features
 
-| Сценарий | Что делает приложение |
-| --- | --- |
-| Гардероб по фотографиям | Принимает JPEG, PNG и WebP. AI предлагает тип, слои, сезонность и ориентировочную температуру; пользователь проверяет и исправляет описание. |
-| Образы под погоду | Учитывает ощущаемую температуру, ветер и осадки за фиксированные три часа. Предлагает только существующие вещи из гардероба. |
-| Замена вещей | Проверяет альтернативу той же роли и сохраняет остальные вещи в образе. Повторный запрос к LLM не требуется. |
-| Восстановление состояния | Сохраняет последний подбор и восстанавливает задачу после перезагрузки. Изменение гардероба или погоды отмечает результат как устаревший. |
-| Погодное оформление | Выбирает фон из девяти собственных SVG-иллюстраций. При устаревании контекста показывает нейтральный фон. |
-| Языки | Английский по умолчанию и русский по выбору. Переключение сохраняет формы, выбранную погоду, результаты и активные задачи. |
-| Демо без настройки сервисов | Позволяет посмотреть готовый гардероб и три погодных сценария без PostgreSQL и ключа OpenAI. |
+| Scenario                   | What the app does                                                                                                                                           |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Photo-based wardrobe       | Accepts JPEG, PNG, and WebP. AI can suggest an item type, layers, seasons, and an approximate comfortable temperature; you review and edit the description. |
+| Weather-based outfits      | Considers feels-like temperature, wind, and precipitation over a fixed three-hour period. Recommends only items that exist in your wardrobe.                |
+| Item replacement           | Checks an alternative for the same role and keeps the rest of the outfit. No additional LLM request is needed.                                              |
+| State recovery             | Saves the latest outfit selection and restores jobs after a reload. Changes to the wardrobe or weather mark the result as outdated.                         |
+| Weather-themed visuals     | Selects a background from nine original SVG illustrations. Shows a neutral background when the context is outdated.                                         |
+| Languages                  | English by default, with Russian available as an option. Switching languages preserves forms, selected weather, results, and active jobs.                   |
+| Demo without service setup | Explore a sample wardrobe and three weather scenarios without PostgreSQL or an OpenAI API key.                                                              |
 
-AI вызывается только по явному действию. Загрузка фотографии, обновление погоды и замена вещи сами по себе не запускают генерацию.
+AI is called only after an explicit user action. Uploading a photo, refreshing the weather, or replacing an item does not trigger generation on its own.
 
-## Технологии
+## Technology
 
-| Область | Стек |
-| --- | --- |
-| Frontend | **Next.js 16**, App Router, React 19, TypeScript, Server Components и SSR |
-| Локализация | Типизированные словари en/ru, cookie и SSR, `Intl`; без дополнительной библиотеки |
-| Данные и формы | TanStack Query, React Hook Form, Zod |
-| Интерфейс | Tailwind CSS 4, shadcn/ui, Radix UI, Lucide |
-| Backend и хранение | Next.js Route Handlers, Node.js, PostgreSQL, Knex, Docker Compose |
-| GenAI и внешние сервисы | OpenAI Responses API: vision и Structured Outputs; Open-Meteo Forecast и Geocoding; ipapi.co |
-| Работа с изображениями | Sharp, нормализация JPEG, удаление EXIF, приватное файловое хранилище |
-| Тестирование и качество | Vitest, Testing Library, Playwright, ESLint, Prettier |
-| Окружение | Node.js 24, pnpm 12.11.2 |
+| Area                        | Stack                                                                                            |
+| --------------------------- | ------------------------------------------------------------------------------------------------ |
+| Frontend                    | **Next.js 16**, App Router, React 19, TypeScript, Server Components, and SSR                     |
+| Localization                | Typed en/ru dictionaries, cookie-based preference and SSR, `Intl`; no additional library         |
+| Data and forms              | TanStack Query, React Hook Form, Zod                                                             |
+| UI                          | Tailwind CSS 4, shadcn/ui, Radix UI, Lucide                                                      |
+| Backend and storage         | Next.js Route Handlers, Node.js, PostgreSQL, Knex, Docker Compose                                |
+| GenAI and external services | OpenAI Responses API: vision and Structured Outputs; Open-Meteo Forecast and Geocoding; ipapi.co |
+| Image processing            | Sharp, JPEG normalization, EXIF removal, private file storage                                    |
+| Testing and quality         | Vitest, Testing Library, Playwright, ESLint, Prettier                                            |
+| Environment                 | Node.js 24, pnpm 12.11.2                                                                         |
 
-## Инженерные решения
+## Engineering decisions
 
-- **Граница сервера и клиента.** Начальные данные приходят через SSR; TanStack Query управляет последующими запросами, кешем и мутациями интерфейса.
-- **Проверяемый результат LLM.** Structured Outputs задаёт форму ответа, а доменный валидатор проверяет реальные ID вещей, роли, слои и погодные правила. Неподтверждённая защита от дождя явно отмечается.
-- **Задачи переживают перезагрузку.** Отдельный Node.js worker получает операции из PostgreSQL. Статусы доставляются через `LISTEN/NOTIFY` и SSE без периодического GET-поллинга.
-- **Контроль платных запросов.** Идемпотентность защищает от дублей; общий месячный бюджет учитывает расходы и резервы в целых microUSD. Неопределённый исход не вызывает автоматический повтор запроса.
-- **Локализация без потери состояния.** SSR учитывает выбранный язык; переключение не перемонтирует формы и не запускает генерацию. Язык AI-ответа фиксируется при запуске операции, сохранённые тексты не переводятся автоматически.
-- **Сохранность пользовательских данных.** AI-предложение применяется отдельно от ручных правок. Версии данных защищают от публикации устаревшего результата; фотографии хранятся вне `public`.
+- **Server/client boundary.** Initial data is rendered with SSR; TanStack Query manages subsequent requests, caching, and UI mutations.
+- **Validated LLM output.** Structured Outputs defines the response shape, while a domain validator checks real item IDs, roles, layers, and weather rules. Unverified rain protection is explicitly marked.
+- **Jobs survive reloads.** A separate Node.js worker picks up operations from PostgreSQL. Status updates are delivered through `LISTEN/NOTIFY` and SSE, without periodic GET polling.
+- **Paid request controls.** Idempotency prevents duplicate jobs; a shared monthly budget tracks spending and reserves in whole microUSD. An unknown outcome never triggers an automatic retry.
+- **Localization without losing state.** SSR uses the selected language; switching does not remount forms or trigger generation. The AI response language is fixed when a job starts, and saved text is not translated automatically.
+- **User data integrity.** AI suggestions are applied separately from manual edits. Version checks prevent outdated results from being published; photos are stored outside `public`.
 
 ```mermaid
 flowchart LR
@@ -63,28 +63,28 @@ flowchart LR
     AI --> Worker
     Worker --> DB
     DB -. "LISTEN / NOTIFY" .-> API
-    API -. "SSE: статусы" .-> UI
+    API -. "SSE: status updates" .-> UI
 ```
 
-## Проверки
+## Verification
 
-Проверки этапа 5a (i18n), **16 октября 2026 года**:
+Stage 5a (i18n) checks, **October 16, 2026**:
 
-| Проверка | Результат |
-| --- | --- |
-| Unit, component и integration | **472 теста** в 61 файле |
-| E2E на desktop и mobile | **32 проверки** |
-| Покрытие строк / ветвей | **97,85% / 90,69%** |
-| TypeScript, ESLint, Prettier | Пройдены |
-| Production-сборка | Проверена с Webpack |
+| Check                            | Result                        |
+| -------------------------------- | ----------------------------- |
+| Unit, component, and integration | **472 tests** across 61 files |
+| Desktop and mobile E2E           | **32 tests**                  |
+| Line / branch coverage           | **97.85% / 90.69%**           |
+| TypeScript, ESLint, Prettier     | Passed                        |
+| Production build                 | Verified with Webpack         |
 
-Интеграционные тесты используют настоящие PostgreSQL и файловое хранилище в изолированном окружении. В E2E транспорт OpenAI подменяется, а worker, ledger и SSE работают полностью. Отдельная живая проверка OpenAI на синтетическом гардеробе вернула два образа, прошедших серверную валидацию.
+Integration tests use real PostgreSQL and file storage in an isolated environment. E2E tests replace the OpenAI transport while running the worker, ledger, and SSE end to end. A separate live OpenAI check with a synthetic wardrobe returned two outfits that passed server-side validation.
 
-## Локальный запуск
+## Local setup
 
-**Только демо:** нужны Node.js 24 и pnpm 12.11.2. Выполните `pnpm install --frozen-lockfile` и `pnpm dev`, затем откройте [/demo](http://127.0.0.1:3000/demo). Docker, БД и API-ключ не нужны.
+**Demo only:** Requires Node.js 24 and pnpm 12.11.2. Run `pnpm install --frozen-lockfile` and `pnpm dev`, then open [/demo](http://127.0.0.1:3000/demo). Docker, a database, and an API key are not required.
 
-**Личный гардероб и AI:** дополнительно запустите **Docker Desktop**. При использовании nvm версия Node выбирается из `.nvmrc`.
+**Personal wardrobe and AI:** Start **Docker Desktop** as well. If you use nvm, select the Node version from `.nvmrc`.
 
 ```sh
 nvm use
@@ -92,15 +92,15 @@ pnpm install --frozen-lockfile
 cp -n .env.example .env.local
 ```
 
-Для личного гардероба заполните `.env.local`:
+Configure `.env.local` for the personal wardrobe:
 
-- `POSTGRES_PASSWORD` — случайный пароль для локальной БД.
-- `DATABASE_URL` — `postgresql://wardrobe:<пароль>@127.0.0.1:55432/wardrobe`; пароль должен совпадать с `POSTGRES_PASSWORD` и быть URL-encoded.
-- `ENABLE_AI=true` и `OPENAI_API_KEY` — для распознавания и подбора. С `ENABLE_AI=false` доступен ручной гардероб.
+- `POSTGRES_PASSWORD` — a randomly generated password for the local database.
+- `DATABASE_URL` — `postgresql://wardrobe:<password>@127.0.0.1:55432/wardrobe`; it must use the same password as `POSTGRES_PASSWORD`, URL-encoded.
+- `ENABLE_AI=true` and `OPENAI_API_KEY` — required for recognition and outfit generation. With `ENABLE_AI=false`, you can use the wardrobe manually.
 
-Если ключ уже задан в `.env`, удалите пустую строку `OPENAI_API_KEY=` из `.env.local`: она перекрывает ключ. Файлы с секретами исключены из Git.
+If the key is already set in `.env`, remove the empty `OPENAI_API_KEY=` line from `.env.local`; otherwise, it overrides the key. Secret files are excluded from Git.
 
-**Приложение** — первый терминал:
+**App** — first terminal:
 
 ```sh
 pnpm db:up
@@ -108,37 +108,37 @@ pnpm db:migrate
 NODE_USE_SYSTEM_CA=1 pnpm dev
 ```
 
-**AI-worker** — второй терминал из корня проекта:
+**AI worker** — second terminal, from the project root:
 
 ```sh
 NODE_USE_SYSTEM_CA=1 pnpm worker
 ```
 
-**Страницы:**
+**Pages:**
 
-- [Гардероб](http://127.0.0.1:3000/wardrobe) — загрузка, описание и сохранение вещей.
-- [Подбор образов](http://127.0.0.1:3000/outfits) — выбор города и ручной запуск подбора.
-- [Демо](http://127.0.0.1:3000/demo) — готовые примеры без БД и OpenAI.
+- [Wardrobe](http://127.0.0.1:3000/wardrobe) — upload, describe, and save clothing items.
+- [Outfit selection](http://127.0.0.1:3000/outfits) — choose a city and manually start outfit generation.
+- [Demo](http://127.0.0.1:3000/demo) — prepared examples without a database or OpenAI.
 
-`NODE_USE_SYSTEM_CA=1` используется на текущем Mac для доверия системным сертификатам. После изменения env перезапустите приложение и worker. Лимит допуска AI-запросов приложения — **$10 в месяц**; он не ограничивает расходы других приложений в аккаунте OpenAI.
+`NODE_USE_SYSTEM_CA=1` is used on the current Mac so Node trusts the system certificates. Restart the app and worker after changing environment variables. The app's AI admission limit is **$10 per month**; it does not limit spending by other applications in your OpenAI account.
 
-## Остановка и проверки
+## Stopping and testing
 
-Приложение и worker останавливаются через `Ctrl+C`, БД — командой `pnpm db:stop`. Данные БД и фотографии в `.data/photos` сохраняются.
+Stop the app and worker with `Ctrl+C`; stop the database with `pnpm db:stop`. Database data and photos in `.data/photos` are preserved.
 
 ```sh
 pnpm test
 pnpm lint
 pnpm typecheck
-pnpm test:coverage # требует запущенной БД
+pnpm test:coverage # requires a running database
 ```
 
-Подробности, production-сборка и E2E: [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
+For more details, production builds, and E2E tests, see [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md).
 
-## Статус и документация
+## Status and documentation
 
-Реализованы гардероб, распознавание, погода, подбор, замена вещей, погодные фоны и **i18n: английский (`en`) по умолчанию, русский (`ru`) через переключатель в шапке**. Выбор сохраняется после перезагрузки; URL остаются прежними. **Следующий этап — контекстный чат с потоковыми ответами**; он пока не реализован.
+The wardrobe, recognition, weather, outfit selection, item replacement, weather backgrounds, and **i18n (English by default, with Russian available in the header)** are implemented. The language preference persists after reload, and URLs remain unchanged. **The next stage is a context-aware streaming chat**, which has not been implemented yet.
 
-- [Идея и требования](docs/PROJECT.md)
-- [Архитектура и план реализации](docs/IMPLEMENTATION_PLAN.md)
-- [Разработка, проверки и ограничения](docs/DEVELOPMENT.md)
+- [Project idea and requirements](docs/PROJECT.md)
+- [Architecture and implementation plan](docs/IMPLEMENTATION_PLAN.md)
+- [Development, checks, and limitations](docs/DEVELOPMENT.md)
