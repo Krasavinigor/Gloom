@@ -15,7 +15,14 @@ export function DemoWorkbench() {
     <>
       <DemoHeading />
 
-      <DemoWeather scenario={scenario} />
+      <DemoWeather
+        scenario={scenario}
+        backgroundPresetId={
+          selected
+            ? ({ warm: 'clear-day', wind: 'clouds-light', rain: 'rain' }[scenario.id] ?? 'default')
+            : 'default'
+        }
+      />
 
       <section
         aria-label="Выбор демонстрационной погоды"

@@ -73,7 +73,10 @@ describe.skipIf(!url)('PostgreSQL operation event delivery', () => {
   it('delivers notifications after commit and suppresses notifications from rolled-back transactions', async () => {
     const operation = await admit(); const events = hub(); const reader = watch(operation.id, events);
     await next(reader);
-    const changed = vi.fn(); const unsubscribe = events.subscribe({ onChange: changed, onUnavailable: vi.fn() });
+    const changed = vi.fn(); const unsubscribe = events.subscribe({ onChange: ids => {
+      // The channel is database-wide; other isolated schemas may commit unrelated operations.
+      if (ids.includes(operation.id)) changed([operation.id]);
+    }, onUnavailable: vi.fn() });
     const trx = await db!.transaction();
     try {
       await trx('ai_operations').where({ id: operation.id }).update({ status: 'running', status_revision: 2 });

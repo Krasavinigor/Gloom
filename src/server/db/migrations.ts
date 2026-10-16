@@ -4,6 +4,7 @@ import * as wardrobe from '../../../db/migrations/202610140001_wardrobe';
 import * as location from '../../../db/migrations/202610140002_location';
 import * as weatherCache from '../../../db/migrations/202610140003_weather_cache';
 import * as aiOperations from '../../../db/migrations/202610150001_ai_operations';
+import * as outfitResult from '../../../db/migrations/202610160001_outfit_result';
 import { validateDatabaseSchema } from './connection';
 
 const migrations = [
@@ -12,6 +13,7 @@ const migrations = [
   { name: '202610140002_location', implementation: location },
   { name: '202610140003_weather_cache', implementation: weatherCache },
   { name: '202610150001_ai_operations', implementation: aiOperations },
+  { name: '202610160001_outfit_result', implementation: outfitResult },
 ] as const;
 type Migration = (typeof migrations)[number];
 

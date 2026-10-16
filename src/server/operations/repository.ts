@@ -151,13 +151,14 @@ export function createOperationsRepository(database: Knex) {
       return snapshot(row, ledger);
     });
   }
-  async function claim(workerId: string, options: { now?: Date; leaseMs?: number; operationId?: string } = {}): Promise<InternalOperation | null> {
+  async function claim(workerId: string, options: { now?: Date; leaseMs?: number; operationId?: string; kinds?: readonly ('recognition' | 'outfits')[] } = {}): Promise<InternalOperation | null> {
     z.string().min(1).max(200).parse(workerId);
     const now = options.now ?? new Date();
     const leaseMs = z.number().int().min(1).max(60_000).parse(options.leaseMs ?? 35_000);
+    const kinds = z.array(z.enum(['recognition', 'outfits'])).min(1).max(2).parse(options.kinds ?? ['recognition']);
     return database.transaction(async (trx) => {
       const query = trx<Row>('ai_operations').where({ status: 'queued', send_state: 'not_sent' })
-        .where('kind', 'recognition').where('deadline_at', '>', now)
+        .whereIn('kind', kinds).where('deadline_at', '>', now)
         .orderBy('created_at').forUpdate().skipLocked();
       if (options.operationId) query.where({ id: uuid.parse(options.operationId) });
       const row = await query.first();

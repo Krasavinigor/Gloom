@@ -34,6 +34,27 @@ describe.skipIf(!url)('durable operations and money', () => {
     expect(simultaneous.filter((entry) => entry.status === 'fulfilled')).toHaveLength(1);
     expect((await repository!.budget()).remainingMicroUsd).toBe(0);
   });
+  it('keeps recognition claims scoped by default and explicitly claims only outfit jobs', async () => {
+    const now = new Date();
+    const outfit = await repository!.admit(admission({ kind: 'outfits' }), { now });
+    const recognition = await repository!.admit(admission(), { now });
+    expect(await repository!.claim('wrong-scope', { now, operationId: outfit.id })).toBeNull();
+    expect((await repository!.claim('recognition-only', { now }))?.id).toBe(recognition.id);
+    expect(await repository!.claim('recognition-empty', { now })).toBeNull();
+    expect(await repository!.claim('outfit-wrong-id', { now, kinds: ['outfits'], operationId: recognition.id })).toBeNull();
+    expect((await repository!.claim('outfits-only', { now, kinds: ['outfits'], operationId: outfit.id }))?.id).toBe(outfit.id);
+    expect(await repository!.claim('outfits-empty', { now, kinds: ['outfits'] })).toBeNull();
+  });
+  it('allows an explicit mixed worker queue but never admits chat to worker claims', async () => {
+    const now = new Date();
+    const chat = await repository!.admit(admission({ kind: 'chat' }), { now });
+    const outfit = await repository!.admit(admission({ kind: 'outfits' }), { now });
+    expect((await repository!.claim('mixed', { now, kinds: ['recognition', 'outfits'] }))?.id).toBe(outfit.id);
+    expect(await repository!.claim('mixed-empty', { now, kinds: ['recognition', 'outfits'] })).toBeNull();
+    expect((await repository!.get(chat.id)).status).toBe('queued');
+    await expect(repository!.claim('empty', { kinds: [] })).rejects.toThrow();
+    await expect(repository!.claim('invalid', { kinds: ['chat' as 'outfits'] })).rejects.toThrow();
+  });
   it('claims once, commits dispatch before provider work and settles against admission month', async () => {
     const now = new Date('2026-10-31T23:59:55Z');
     const op = await repository!.admit(admission(), { now });

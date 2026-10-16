@@ -43,7 +43,7 @@ export function weatherCacheKey(place: ForecastPlace): string {
   return createHash('sha256').update(forecastUrl(place).href).digest('hex');
 }
 
-function validateCoverage(raw: unknown, place: ForecastPlace, start: number, status: 'fresh' | 'stale'): Forecast {
+function validateCoverage(raw: unknown, place: ForecastPlace, start: number, status: 'fresh' | 'stale', observedAt = start): Forecast {
   const forecast = responseSchema.parse(raw);
   if (canonicalTimezone(forecast.timezone) !== canonicalTimezone(place.timezone)
     || Math.abs(forecast.latitude - place.latitude) > 1 || Math.abs(forecast.longitude - place.longitude) > 1) throw new Error('Forecast location mismatch.');
@@ -51,8 +51,8 @@ function validateCoverage(raw: unknown, place: ForecastPlace, start: number, sta
   if (Object.values(forecast.hourly).some((values) => values.length !== times.length)
     || times.some((time, index) => index > 0 && time - times[index - 1] !== HOUR)
     || times[0] > start || times[times.length - 1] < start + 3 * HOUR) throw new Error('Incomplete hourly coverage.');
-  if (forecast.current.time > start + 300 || (status === 'fresh' && start - forecast.current.time > 2700)
-    || start - forecast.current.time > 86400) throw new Error('Invalid current forecast time.');
+  if (forecast.current.time > observedAt + 300 || (status === 'fresh' && observedAt - forecast.current.time > 2700)
+    || observedAt - forecast.current.time > 86400) throw new Error('Invalid current forecast time.');
   return forecast;
 }
 
@@ -82,13 +82,14 @@ function summarize(forecast: Forecast, start: number): WeatherSnapshot['summary'
     windGustsMax: Math.max(...intervals(hourly.wind_gusts_10m)),
     precipitationMm: Math.round(intervals(hourly.precipitation).reduce((total, value) => total + value, 0) * 100) / 100,
     precipitationProbabilityMax: Math.max(...intervals(hourly.precipitation_probability)),
+    weatherCodes: [...new Set(hourly.time.flatMap((time, index) => time >= start && time <= end ? [hourly.weather_code[index]] : []))],
     precipitationPeriod: { start: iso(hourly.time[intervalIndexes[0]] - HOUR), end: iso(hourly.time[intervalIndexes[intervalIndexes.length - 1]]) },
   };
 }
 
-export function normalizeForecast(raw: unknown, place: ForecastPlace, now: number, status: 'fresh' | 'stale', fetchedAt: string, locationVersion: number): WeatherSnapshot {
+export function normalizeForecast(raw: unknown, place: ForecastPlace, now: number, status: 'fresh' | 'stale', fetchedAt: string, locationVersion: number, observedAt = now): WeatherSnapshot {
   const start = now / 1000;
-  const forecast = validateCoverage(raw, place, start, status);
+  const forecast = validateCoverage(raw, place, start, status, observedAt / 1000);
   const current = forecast.current;
   return {
     status, locationVersion, placeId: String(place.id), fetchedAt,

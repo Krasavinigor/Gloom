@@ -5,7 +5,7 @@ import { parseServerEnvironment } from '../config/environment';
 import { createDatabase } from '../db/connection';
 import { createOperationsRepository } from '../operations/repository';
 import { isTerminalStatus } from '../operations/schema';
-import { parseRecognitionEvidence } from '../recognition/reconcile';
+import { parseAiUsageEvidence } from '../recognition/reconcile';
 
 async function main() {
   const [operationId, evidencePath, ...extra] = process.argv.slice(2);
@@ -21,10 +21,10 @@ async function main() {
   try {
     const repository = createOperationsRepository(database);
     const operation = await repository.getInternal(operationId);
-    if (operation.kind !== 'recognition' || !isTerminalStatus(operation.status) || operation.settlementState !== 'unknown') {
-      throw new Error('Only a terminal recognition with unknown settlement can be reconciled.');
+    if ((operation.kind !== 'recognition' && operation.kind !== 'outfits') || !isTerminalStatus(operation.status) || operation.settlementState !== 'unknown') {
+      throw new Error('Only terminal recognition/outfit operations with unknown settlement can be reconciled.');
     }
-    const evidence = parseRecognitionEvidence(input, operation);
+    const evidence = parseAiUsageEvidence(input, { ...operation, kind: operation.kind });
     const reference = await database('ai_operations').where({ id: operationId }).select('request_id', 'response_id').first();
     if (!((reference?.request_id && reference.request_id === evidence.requestId)
       || (reference?.response_id && reference.response_id === evidence.responseId))) {

@@ -1,6 +1,5 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -10,6 +9,8 @@ import { detectIpLocation } from '../location/ip-location';
 import type { LocationState, Place } from '../location/schema';
 import { WeatherPanel } from '../weather/weather-panel';
 import type { WeatherSnapshot } from '../weather/schema';
+import type { OutfitState } from '@/server/outfits/repository';
+import { OutfitPanel } from './outfit-panel';
 
 const locationKey = ['personal-location'] as const;
 
@@ -18,11 +19,15 @@ export function OutfitsWorkbench({
   initialWeather,
   initialError,
   initialNow,
+  initialResult,
+  aiEnabled = false,
 }: {
   initialLocation?: LocationState;
   initialWeather?: WeatherSnapshot;
   initialError?: string;
   initialNow?: number;
+  initialResult?: OutfitState;
+  aiEnabled?: boolean;
 }) {
   const client = useQueryClient();
   const manualIntent = useRef(false);
@@ -116,6 +121,13 @@ export function OutfitsWorkbench({
     if (!result.error) save.reset();
   }
   const weather = weatherQuery.data;
+  const contextKey = `${location?.locationVersion}:${weather?.fetchedAt}:${weather?.status}`;
+  const previousContext = useRef(contextKey);
+  useEffect(() => {
+    if (previousContext.current === contextKey) return;
+    previousContext.current = contextKey;
+    client.invalidateQueries({ queryKey: ['outfit-result'] });
+  }, [client, contextKey]);
   const conflict = save.error instanceof LocationApiError && save.error.status === 409;
   return (
     <>
@@ -233,20 +245,12 @@ export function OutfitsWorkbench({
           )}
         </div>
       </div>
-      <Card className="mt-7 p-6">
-        <h2 className="text-xl font-semibold">Образы из вашего гардероба</h2>
-        <p className="mt-3 text-sm leading-6 text-stone-500">
-          Подбор образов пока готовится. Добавьте вещи в гардероб или познакомьтесь с примерами.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-3">
-          <Button asChild>
-            <Link href="/wardrobe">Открыть гардероб</Link>
-          </Button>
-          <Button asChild variant="outline">
-            <Link href="/demo">Посмотреть демо</Link>
-          </Button>
-        </div>
-      </Card>
+      <OutfitPanel
+        initialResult={initialResult}
+        aiEnabled={aiEnabled}
+        now={now}
+        contextWeather={weather}
+      />
     </>
   );
 }

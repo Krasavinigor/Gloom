@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { OutfitCard } from './outfit-card';
 import type { DemoScenario } from './fixtures';
+import { WeatherBackground } from '@/features/backgrounds/weather-background';
 
 export function DemoHeading() {
   return (
@@ -26,7 +27,13 @@ export function DemoHeading() {
   );
 }
 
-export function DemoWeather({ scenario }: { scenario: DemoScenario }) {
+export function DemoWeather({
+  scenario,
+  backgroundPresetId = 'default',
+}: {
+  scenario: DemoScenario;
+  backgroundPresetId?: string;
+}) {
   const weatherDetails = [
     ['Ощущается', scenario.feelsLike],
     ['Ветер', scenario.wind],
@@ -37,11 +44,9 @@ export function DemoWeather({ scenario }: { scenario: DemoScenario }) {
       aria-labelledby="weather-heading"
       className="overflow-hidden rounded-3xl border border-stone-200 bg-[#eae9d5]"
     >
-      <div
-        className="weather-hero relative p-6 sm:p-8"
-        style={{
-          backgroundImage: `linear-gradient(90deg, rgba(250,249,245,.98) 0%, rgba(250,249,245,.93) 36%, rgba(250,249,245,.25) 100%), url('${scenario.background}')`,
-        }}
+      <WeatherBackground
+        presetId={backgroundPresetId}
+        className="weather-hero rounded-none p-6 sm:p-8"
       >
         <div className="relative max-w-md">
           <p className="text-xs tracking-[0.16em] text-stone-500 uppercase">
@@ -60,7 +65,7 @@ export function DemoWeather({ scenario }: { scenario: DemoScenario }) {
           </div>
           <p className="mt-4 text-sm leading-6 text-stone-600">{scenario.description}</p>
         </div>
-      </div>
+      </WeatherBackground>
       <dl className="grid grid-cols-3 border-t border-stone-200/80 bg-white/75 px-4 py-5 sm:px-8">
         {weatherDetails.map(([title, value]) => (
           <div key={title} className="border-r border-stone-200 px-2 last:border-0 sm:px-4">

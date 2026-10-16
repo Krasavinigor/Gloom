@@ -7,14 +7,14 @@ type CacheRow = Readonly<{ key: string; payload: unknown; fetched_at: Date | str
 type Dependencies = Readonly<{ fetcher?: typeof fetch; clock?: () => number }>;
 const CACHE_TTL = 15 * 60_000;
 
-function fromCache(row: CacheRow | undefined, place: Place, now: number, version: number, stale = false): WeatherSnapshot | undefined {
+function fromCache(row: CacheRow | undefined, place: Place, now: number, version: number, stale = false, periodStart = now): WeatherSnapshot | undefined {
   if (!row) return undefined;
   const fetched = new Date(row.fetched_at).getTime();
   const expires = new Date(row.expires_at).getTime();
   if (!Number.isFinite(fetched) || !Number.isFinite(expires) || fetched > now || expires !== fetched + CACHE_TTL
     || (!stale && now >= expires)) return undefined;
   try {
-    return normalizeForecast(row.payload, place, now, stale ? 'stale' : 'fresh', new Date(fetched).toISOString(), version);
+    return normalizeForecast(row.payload, place, periodStart, stale ? 'stale' : 'fresh', new Date(fetched).toISOString(), version, now);
   } catch {
     return undefined; // A corrupt/incomplete cached forecast is never exposed; attempt the provider next.
   }
@@ -34,21 +34,22 @@ async function fetchForecast(fetcher: typeof fetch, place: Place): Promise<unkno
 
 export function createWeatherService(database: Knex, { fetcher = fetch, clock = Date.now }: Dependencies = {}) {
   return {
-    async get(place: Place, locationVersion: number): Promise<WeatherSnapshot> {
+    async get(place: Place, locationVersion: number, periodStart?: number): Promise<WeatherSnapshot> {
       const key = weatherCacheKey(place);
       const row = await database<CacheRow>('weather_cache').where({ key }).first();
-      const cached = fromCache(row, place, clock(), locationVersion);
+      const now = clock();
+      const cached = fromCache(row, place, now, locationVersion, false, periodStart ?? now);
       if (cached) return cached;
       let payload: unknown;
       let snapshot: WeatherSnapshot;
       try {
         payload = await fetchForecast(fetcher, place);
         const now = clock();
-        snapshot = normalizeForecast(payload, place, now, 'fresh', new Date(now).toISOString(), locationVersion);
+        snapshot = normalizeForecast(payload, place, periodStart ?? now, 'fresh', new Date(now).toISOString(), locationVersion, now);
       } catch {
         console.warn('Weather provider unavailable or invalid forecast.');
         const now = clock();
-        return fromCache(row, place, now, locationVersion, true) ?? unavailable(place, now, locationVersion);
+        return fromCache(row, place, now, locationVersion, true, periodStart ?? now) ?? unavailable(place, periodStart ?? now, locationVersion);
       }
       const fetchedAt = new Date(snapshot.fetchedAt!);
       await database('weather_cache').insert({ key, payload: JSON.stringify(payload), fetched_at: fetchedAt,

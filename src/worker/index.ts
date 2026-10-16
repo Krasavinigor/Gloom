@@ -4,6 +4,9 @@ import { loadEnvConfig } from '@next/env';
 import { parseServerEnvironment } from '../server/config/environment';
 import { createDatabase } from '../server/db/connection';
 import { createOperationsRepository } from '../server/operations/repository';
+import { createOutfitProvider } from '../server/outfits/provider';
+import { createOutfitsRepository } from '../server/outfits/repository';
+import { runOutfitOnce } from './outfit-worker';
 import { createRecognitionContext } from '../server/recognition/context';
 import { createRecognitionProvider } from '../server/recognition/provider';
 import { preparePrivateStorage } from '../server/storage/private-storage';
@@ -30,11 +33,14 @@ async function main() {
     const root = await preparePrivateStorage(config.fileStorageRoot);
     const repository = createOperationsRepository(database);
     const wardrobe = createWardrobeService(createWardrobeRepository(database), root);
-    const deps = { workerId: `recognition-${randomUUID()}`, repository, context: createRecognitionContext(database, root),
+    const deps = { workerId: `ai-${randomUUID()}`, repository, context: createRecognitionContext(database, root),
       provider: createRecognitionProvider({ apiKey: config.openaiApiKey }), signal: controller.signal };
+    const outfitDeps = { workerId: deps.workerId, repository, context: createOutfitsRepository(database),
+      provider: createOutfitProvider({ apiKey: config.openaiApiKey }), signal: controller.signal };
+    let recognitionFirst = true;
     let recoveryAt = 0;
     let cleanupAt = 0;
-    console.info('Recognition worker started. Explicitly queued operations only.');
+    console.info('AI worker started. Explicitly queued recognition and outfit operations only.');
     while (!controller.signal.aborted) {
       try {
         const now = Date.now();
@@ -42,11 +48,16 @@ async function main() {
         if (now >= cleanupAt) {
           cleanupAt = now + 60_000;
           try { await wardrobe.cleanup(new Date(now)); }
-          catch { console.error('Photo maintenance deferred; recognition worker remains available.'); }
+          catch { console.error('Photo maintenance deferred; AI worker remains available.'); }
         }
-        if (!await runRecognitionOnce(deps)) await wait(500, controller.signal);
+        // Alternate the first queue so neither task kind can starve the other.
+        const startWithRecognition = recognitionFirst;
+        recognitionFirst = !recognitionFirst;
+        const first = startWithRecognition ? await runRecognitionOnce(deps) : await runOutfitOnce(outfitDeps);
+        const second = startWithRecognition ? await runOutfitOnce(outfitDeps) : await runRecognitionOnce(deps);
+        if (!first && !second) await wait(500, controller.signal);
       } catch {
-        console.error('Recognition worker iteration failed; durable operation state retained.');
+        console.error('AI worker iteration failed; durable operation state retained.');
         await wait(1_000, controller.signal);
       }
     }
@@ -58,6 +69,6 @@ async function main() {
 }
 
 main().catch(() => {
-  console.error('Recognition worker could not start. Check AI settings, database and private photo access.');
+  console.error('AI worker could not start. Check AI settings, database and private photo access.');
   process.exitCode = 1;
 });

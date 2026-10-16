@@ -102,6 +102,14 @@ async function runDispatched(deps: RecognitionWorkerDependencies, operation: Int
     return;
   }
   const completion = { actualCostMicroUsd, usage: result.usage!, ...resultMetadata(result), now: now() };
+  if (deps.signal?.aborted || Date.parse(operation.deadlineAt) <= +now()) {
+    const stopped = deps.signal?.aborted;
+    await deps.repository.finish(operation.id, { ...completion,
+      status: stopped ? 'interrupted' : 'timed_out',
+      errorCode: stopped ? 'WORKER_STOPPED' : 'DEADLINE_EXCEEDED',
+    });
+    return;
+  }
   if (!result.proposal) {
     await deps.repository.finish(operation.id, { ...completion, status: 'failed', errorCode: result.errorCode ?? 'invalid_output' });
     return;

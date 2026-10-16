@@ -16,6 +16,7 @@ export const weatherSnapshotSchema = z.object({
     temperature: temperatureRange, apparentTemperature: temperatureRange,
     windSpeedMax: z.number(), windGustsMax: z.number(), precipitationMm: z.number(),
     precipitationProbabilityMax: z.number(),
+    weatherCodes: z.array(z.number().int()).max(192).optional(),
     precipitationPeriod: z.object({ start: z.iso.datetime(), end: z.iso.datetime() }),
   }).nullable(),
   message: z.string().nullable(),

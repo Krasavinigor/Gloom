@@ -23,6 +23,30 @@ function memoryDatabase() {
 afterEach(() => vi.restoreAllMocks());
 
 describe('forecast cache service', () => {
+  it('keeps the explicit outfit interval fixed during a delayed fetch while recording the real fetch time', async () => {
+    const store = memoryDatabase();
+    let time = now;
+    const fetcher = vi.fn<typeof fetch>(async () => { time += 4_000; return Response.json(fixture()); });
+    const service = createWeatherService(store.database, { fetcher, clock: () => time });
+    const result = await service.get(place, 1, now);
+    expect(result.period.start).toBe(new Date(now).toISOString());
+    expect(result.period.end).toBe(new Date(now + 10_800_000).toISOString());
+    expect(result.fetchedAt).toBe(new Date(now + 4_000).toISOString());
+  });
+  it('ages cached data by real time while comparing a fixed outfit period with updated observations', async () => {
+    const store = memoryDatabase();
+    let time = now;
+    const fetcher = vi.fn<typeof fetch>(async () => Response.json({ ...fixture(), current: { ...fixture().current, time: time / 1000 } }));
+    const service = createWeatherService(store.database, { fetcher, clock: () => time });
+    const first = await service.get(place, 1, now);
+    time += 16 * 60_000;
+    const second = await service.get(place, 1, now);
+    expect(fetcher).toHaveBeenCalledTimes(2);
+    expect(second.status).toBe('fresh');
+    expect(second.period).toEqual(first.period);
+    expect(second.summary).toEqual(first.summary);
+    expect(second.fetchedAt).not.toBe(first.fetchedAt);
+  });
   it('caches validated payload15min and recomputes window/version on reads without changing timestamp', async () => {
     const store = memoryDatabase();
     const fetcher = vi.fn<typeof fetch>(async () => Response.json(fixture()));

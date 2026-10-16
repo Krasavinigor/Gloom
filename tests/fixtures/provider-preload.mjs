@@ -31,6 +31,26 @@ globalThis.fetch = async (input, options) => {
     // A real worker, SDK, database ledger and SSE feed run around this deterministic transport.
     // The delay leaves enough time to reload the page while the durable task is running.
     await delay(3_000, undefined, { signal: options?.signal ?? (input instanceof Request ? input.signal : undefined) });
+    const request = JSON.parse(options?.body ?? await input.clone().text());
+    if (request.text?.format?.name === 'weather_outfits') {
+      const wardrobe = JSON.parse(request.input.find((item) => item.role === 'user').content).garments;
+      if (wardrobe.some((item) => item.name.includes('E2E_PROVIDER_FAILURE'))) {
+        return Response.json({ error: { message: 'Synthetic provider failure', type: 'server_error' } }, { status: 503 });
+      }
+      const roles = [['base_top', 't_shirt'], ['bottom', 'trousers'], ['footwear', 'boots'],
+        ['middle', 'sweater'], ['outer', 'jacket']];
+      const items = roles.map(([role, type]) => {
+        const garment = wardrobe.find((item) => item.type === type);
+        if (!garment) throw new Error(`Outfit browser fixture is missing ${type}.`);
+        return { garmentId: garment.id, role };
+      });
+      return Response.json({ id: 'resp_outfits_browser_fixture', status: 'completed', service_tier: 'default',
+        output: [{ type: 'message', content: [{ type: 'output_text', text: JSON.stringify({ suggestions: [{
+          id: 'look-1', title: 'Образ для прогулки', explanation: 'Слои можно снять при потеплении. Защита от дождя не подтверждена.', items,
+        }] }) }] }], usage: { input_tokens: 200, output_tokens: 120,
+          input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 } },
+      }, { headers: { 'x-request-id': 'req_outfits_browser_fixture' } });
+    }
     const proposal = { kind: 'item', fields: {
       name: 'Зелёная футболка AI', type: 't_shirt', bodyAreas: ['torso'],
       seasons: ['summer'], layers: ['base'], color: 'зелёный', pattern: 'однотонная',

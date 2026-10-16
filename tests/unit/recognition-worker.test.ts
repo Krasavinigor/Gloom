@@ -33,6 +33,19 @@ function fixture(overrides: Partial<InternalOperation> = {}) {
 afterEach(() => vi.useRealTimers());
 
 describe('durable recognition worker dispatch', () => {
+  it.each(['deadline', 'shutdown'])('settles a received response without publishing after %s', async (reason) => {
+    const deps = fixture(); const stop = new AbortController(); let clock = now;
+    deps.provider.mockImplementation(async () => {
+      if (reason === 'deadline') clock = new Date(+now + 30_000);
+      else stop.abort();
+      return { proposal, usage, requestId: 'req_received', responseId: 'resp_received' };
+    });
+    await runRecognitionOnce({ ...deps, signal: stop.signal, now: () => clock });
+    expect(deps.repository.finish.mock.calls[0][1]).toMatchObject({ status: reason === 'deadline' ? 'timed_out' : 'interrupted', actualCostMicroUsd: 15 });
+    expect(deps.repository.finish.mock.calls[0][1].errorCode).toBe(reason === 'deadline' ? 'DEADLINE_EXCEEDED' : 'WORKER_STOPPED');
+    expect(deps.repository.finish.mock.calls[0]).toHaveLength(2);
+    expect(deps.context.publish).not.toHaveBeenCalled();
+  });
   it('does nothing when the queue is empty', async () => {
     const deps = fixture();
     deps.repository.claim.mockResolvedValue(null);

@@ -14,6 +14,11 @@ const fixture = (start = now - 30 * 60_000, count = 8) => ({
 const normalize = (raw: unknown, time = now, status: 'fresh' | 'stale' = 'fresh') => normalizeForecast(raw, place, time, status, new Date(now).toISOString(), 4);
 
 describe('Open-Meteo forecast normalization', () => {
+  it('retains weather codes inside the fixed interval for background priority', () => {
+    const raw = fixture();
+    const result = normalize({ ...raw, hourly: { ...raw.hourly, weather_code: [71, 3, 95, 61, 0, 0, 0, 0] } });
+    expect(result.summary?.weatherCodes).toEqual([3, 95, 61]);
+  });
   it('accepts the documented heavy-thunderstorm code in current and hourly data', () => {
     const raw = fixture();
     const result = normalize({ ...raw, current: { ...raw.current, weather_code: 97 },
@@ -24,7 +29,7 @@ describe('Open-Meteo forecast normalization', () => {
   it('uses UTC three-hour window across repeated local DST hour, estimates instantaneous boundaries and conservatively includes rain intervals', () => {
     const result = normalize(fixture());
     expect(result.period).toEqual({ start: '2026-10-25T00:30:00.000Z', end: '2026-10-25T03:30:00.000Z', timezone: place.timezone });
-    expect(result.summary).toEqual({ temperature: { min: 10.5, max: 13.5 }, apparentTemperature: { min: 7.5, max: 10.5 }, windSpeedMax: 13.5, windGustsMax: 24, precipitationMm: 3, precipitationProbabilityMax: 40, precipitationPeriod: { start: '2026-10-25T00:00:00.000Z', end: '2026-10-25T04:00:00.000Z' } });
+    expect(result.summary).toEqual({ temperature: { min: 10.5, max: 13.5 }, apparentTemperature: { min: 7.5, max: 10.5 }, windSpeedMax: 13.5, windGustsMax: 24, precipitationMm: 3, precipitationProbabilityMax: 40, weatherCodes: [3], precipitationPeriod: { start: '2026-10-25T00:00:00.000Z', end: '2026-10-25T04:00:00.000Z' } });
     expect(weatherSnapshotSchema.parse(result)).toEqual(result);
     expect(result.current?.precipitation).toBe(0.3);
     expect(result.locationVersion).toBe(4);
